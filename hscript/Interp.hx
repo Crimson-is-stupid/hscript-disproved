@@ -225,7 +225,7 @@ class Interp {
 					v = newV;
 				}
 
-			if (l.set.type == 'never') return v;
+				if (l.set.type == 'never') return v;
 			
 				if (l == null) {
 					if (!variables.exists(id) && !staticVariables.exists(id) && !publicVariables.exists(id) && scriptObject != null) {
@@ -472,7 +472,7 @@ class Interp {
 				if (inRecursion && id == curFunc.replace('get_', '')) return l.r;
 				return l.get.func();
 			}
-			return l.r;
+			return l.get != null && l.get.type == 'never' ? null : l.r;
 		}
 
 		var v = variables.get(id);
