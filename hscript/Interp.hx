@@ -57,7 +57,7 @@ class Interp {
 	public var publicVariables:Map<String, Dynamic>;
 	public var staticVariables:Map<String, Dynamic>;
 
-	public var locals:Map<String, {r:Dynamic, depth:Int}>;
+	public var locals:Map<String, {r:Dynamic, depth:Int, ?get:{type:String, func:Null<Dynamic>}, ?set:{type:String, func:Null<Dynamic>}}>;
 	var binops:Map<String, Expr->Expr->Dynamic>;
 	#else
 	public var customClasses:Hash<Dynamic>;
@@ -65,13 +65,13 @@ class Interp {
 	public var publicVariables:Hash<Dynamic>;
 	public var staticVariables:Hash<Dynamic>;
 
-	public var locals:Hash<{r:Dynamic, depth:Int}>;
+	public var locals:Hash<{r:Dynamic, depth:Int, ?get:{type:String, func:Null<Dynamic>}, ?set:{type:String, func:Null<Dynamic>}}>;
 	var binops:Hash<Expr->Expr->Dynamic>;
 	#end
 
 	var depth:Int = 0;
 	var inTry:Bool;
-	var declared:Array<{n:String, old:{r:Dynamic, depth:Int}, depth:Int}>;
+	var declared:Array<{n:String, old:{r:Dynamic, depth:Int, ?get:{type:String, func:Null<Dynamic>}, ?set:{type:String, func:Null<Dynamic>}}, depth:Int}>;
 	var returnValue:Dynamic;
 
 	var isBypassAccessor:Bool = false;
@@ -80,6 +80,9 @@ class Interp {
 
 	public var allowStaticVariables:Bool = false;
 	public var allowPublicVariables:Bool = false;
+
+	public var inRecursion:Bool = false;
+	public var curFunc:String = '';
 
 	public var importBlocklist:Array<String> = [
 		// "flixel.FlxG"
@@ -215,6 +218,15 @@ class Interp {
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
 				var l = locals.get(id);
+				
+				if (l != null && l.set.func != null && l.set.type == 'set') {
+					var newV = l.set.func(v); // in this video we are killing my neighbor
+					if (inRecursion && id == curFunc.replace('set_', '')) newV = v;
+					v = newV;
+				}
+
+			if (l.set.type == 'never') return v;
+			
 				if (l == null) {
 					if (!variables.exists(id) && !staticVariables.exists(id) && !publicVariables.exists(id) && scriptObject != null) {
 						if (Type.typeof(scriptObject) == TObject) {
@@ -273,7 +285,16 @@ class Interp {
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
 				var l = locals.get(id);
+				
+				
 				v = fop(expr(e1), expr(e2));
+				if (l != null && l.set.func != null && l.set.type == 'set') {
+					var newV = l.set.func(v); // in this video we are killing my neighbor
+					if (inRecursion && id == curFunc.replace('set_', '')) newV = v;
+					v = newV;
+				}
+
+				if (l.set.type == 'never') return v;
 				if (l == null) {
 					if (__instanceFields.contains(id)) {
 						Reflect.setProperty(scriptObject, id, v);
@@ -446,8 +467,13 @@ class Interp {
 			return null;
 		id = StringTools.trim(id);
 		var l = locals.get(id);
-		if (l != null)
+		if (l != null) {
+			if (l.get != null && l.get.type == 'get') {
+				if (inRecursion && id == curFunc.replace('get_', '')) return l.r;
+				return l.get.func();
+			}
 			return l.r;
+		}
 
 		var v = variables.get(id);
 		for(map in [variables, publicVariables, staticVariables, customClasses])
@@ -569,9 +595,9 @@ class Interp {
 				}
 			case EIdent(id):
 				return resolve(id);
-			case EVar(n, _, e, isPublic, isStatic):
+			case EVar(n, g, s, _, e, isPublic, isStatic):
 				declared.push({n: n, old: locals.get(n), depth: depth});
-				locals.set(n, {r: (e == null) ? null : expr(e), depth: depth});
+				locals.set(n, {r: s == 'never' ? null : (e == null) ? null : expr(e), depth: depth, get:{type:g, func:null}, set:{type:s, func:null}});
 				if (depth == 0) {
 					if(isStatic == true) {
 						if(!staticVariables.exists(n)) {
@@ -656,7 +682,7 @@ class Interp {
 				throw SReturn;
 			case EFunction(params, fexpr, name, _, isPublic, isStatic, isOverride):
 				var __capturedLocals = duplicate(locals);
-				var capturedLocals:Map<String, {r:Dynamic, depth:Int}> = [];
+				var capturedLocals:Map<String, {r:Dynamic, depth:Int, ?get:{type:String, func:Null<Dynamic>}, ?set:{type:String, func:Null<Dynamic>}}> = [];
 				for(k=>e in __capturedLocals)
 					if (e != null && e.depth > 0)
 						capturedLocals.set(k, e);
@@ -702,7 +728,12 @@ class Interp {
 					var oldDecl = declared.length;
 					if (inTry)
 						try {
+							var preRecursion = inRecursion;
+							inRecursion = true;
+							curFunc = name;
 							r = me.exprReturn(fexpr);
+							curFunc = '';
+							inRecursion = preRecursion;
 						} catch (e:Dynamic) {
 							me.locals = old;
 							me.depth = depth;
@@ -712,8 +743,14 @@ class Interp {
 							throw e;
 							#end
 						}
-					else
+					else {
+						var preRecursion = inRecursion;
+						inRecursion = true;
+						curFunc = name;
 						r = me.exprReturn(fexpr);
+						curFunc = '';
+						inRecursion = preRecursion;
+					}
 					restore(oldDecl);
 					me.locals = old;
 					me.depth = depth;
@@ -722,6 +759,14 @@ class Interp {
 				var f = Reflect.makeVarArgs(f);
 				if (name != null) {
 					if (depth == 0) {
+					var l = locals.get(name.replace('get_', ''));
+					if (l != null && name != name.replace('get_', '') && l.get.type == 'get') {
+						l.get.func = f;
+					}
+					l = locals.get(name.replace('set_', ''));
+					if (l != null && name != name.replace('set_', '') && l.set.type == 'set') {
+						l.set.func = f;
+					}
 						// global function
 						((isStatic && allowStaticVariables) ? staticVariables : ((isPublic && allowPublicVariables) ? publicVariables : variables)).set(name, f);
 					} else {

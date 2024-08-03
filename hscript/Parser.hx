@@ -195,6 +195,7 @@ class Parser {
 			push(tk);
 			parseFullExpr(a);
 		}
+		trace("INPUT: " + s);
 		return if( a.length == 1 ) a[0] else mk(EBlock(a),0);
 	}
 
@@ -282,7 +283,7 @@ class Parser {
 			case EBlock(_), EObject(_), ESwitch(_): true;
 			case EFunction(_,e,_,_,_,_): isBlock(e);
 			case EClass(_,e,_,_): true;
-			case EVar(_, t, e, _,_): e != null ? isBlock(e) : t != null ? t.match(CTAnon(_)) : false;
+			case EVar(_, _, _, t, e, _,_): e != null ? isBlock(e) : t != null ? t.match(CTAnon(_)) : false;
 			case EIf(_,e1,e2): if( e2 != null ) isBlock(e2) else isBlock(e1);
 			case EBinop(_,_,e): isBlock(e);
 			case EUnop(_,prefix,e): !prefix && isBlock(e);
@@ -485,7 +486,7 @@ class Parser {
 					case EFor(_), EWhile(_), EDoWhile(_):
 						var tmp = "__a_" + (uid++);
 						var e = mk(EBlock([
-							mk(EVar(tmp, null, mk(EArrayDecl([]), p1)), p1),
+							mk(EVar(tmp, 'default', 'default', null, mk(EArrayDecl([]), p1)), p1),
 							mapCompr(tmp, a[0]),
 							mk(EIdent(tmp),p1),
 						]),p1);
@@ -715,6 +716,17 @@ class Parser {
 			var tk = token();
 			var t = null;
 			nextType = null;
+
+			var get:String = 'default', set:String = 'default';
+
+			if ( tk == TPOpen ) {
+				get = getIdent().toLowerCase();
+				ensure(TComma);
+				set = getIdent().toLowerCase();
+				ensure(TPClose);
+				tk = token();
+			}
+			
 			if( tk == TDoubleDot && allowTypes ) {
 				t = parseType();
 				tk = token();
@@ -727,7 +739,7 @@ class Parser {
 			else
 				push(tk);
 			nextType = null;
-			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic), p1, (e == null) ? tokenMax : pmax(e));
+			mk(EVar(ident, get, set, t, e, nextIsPublic, nextIsStatic), p1, (e == null) ? tokenMax : pmax(e));
 		case "while":
 			var econd = parseExpr();
 			var e = parseExpr();

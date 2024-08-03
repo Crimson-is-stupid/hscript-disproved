@@ -29,7 +29,7 @@ class Tools {
 		case EConst(_), EIdent(_):
 		case EImport(c): f(e);
 		case EClass(_, e, _, _): for( a in e ) f(a);
-		case EVar(_, _, e): if( e != null ) f(e);
+		case EVar(_, _, _, _, e): if( e != null ) f(e);
 		case EParent(e): f(e);
 		case EBlock(el): for( e in el ) f(e);
 		case EField(e, _): f(e);
@@ -66,7 +66,7 @@ class Tools {
 	public static function map( e : Expr, f : Expr -> Expr ) {
 		var edef = switch( expr(e) ) {
 		case EConst(_), EIdent(_), EBreak, EContinue: expr(e);
-		case EVar(n, t, e): EVar(n, t, if( e != null ) f(e) else null);
+		case EVar(n, g, s, t, e): EVar(n, g, s, t, if( e != null ) f(e) else null);
 		case EParent(e): EParent(f(e));
 		case EBlock(el): EBlock([for( e in el ) f(e)]);
 		case EField(e, fi): EField(f(e),fi);

@@ -141,8 +141,10 @@ class Printer {
 			}
 		case EIdent(v):
 			add(v);
-		case EVar(n, t, e): // TODO: static, public, override
+		case EVar(n, g, s, t, e): // TODO: static, public, override
 			add("var " + n);
+			if (g != null && g != null)
+				add('(${g}, ${s})');
 			addType(t);
 			if( e != null ) {
 				add(" = ");
