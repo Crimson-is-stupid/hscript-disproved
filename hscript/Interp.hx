@@ -219,10 +219,8 @@ class Interp {
 			case EIdent(id):
 				var l = locals.get(id);
 				
-				if (l != null && l.set.func != null && l.set.type == 'set') {
-					var newV = l.set.func(v); // in this video we are killing my neighbor
-					if (inRecursion && id == curFunc.replace('set_', '')) newV = v;
-					v = newV;
+				if (l != null && l.set.func != null && l.set.type == 'set' && !(inRecursion && id == curFunc.replace('set_', ''))) {
+					v = l.set.func(v); // in this video we are killing my neighbor
 				}
 
 				if (l.set.type == 'never') return v;
@@ -288,10 +286,8 @@ class Interp {
 				
 				
 				v = fop(expr(e1), expr(e2));
-				if (l != null && l.set.func != null && l.set.type == 'set') {
-					var newV = l.set.func(v); // in this video we are killing my neighbor
-					if (inRecursion && id == curFunc.replace('set_', '')) newV = v;
-					v = newV;
+				if (l != null && l.set.func != null && l.set.type == 'set' && !(inRecursion && id == curFunc.replace('set_', ''))) {
+					v = l.set.func(v); // in this video we are killing my neighbor
 				}
 
 				if (l.set.type == 'never') return v;
@@ -468,8 +464,7 @@ class Interp {
 		id = StringTools.trim(id);
 		var l = locals.get(id);
 		if (l != null) {
-			if (l.get != null && l.get.type == 'get') {
-				if (inRecursion && id == curFunc.replace('get_', '')) return l.r;
+			if (l.get != null && l.get.type == 'get' && !(inRecursion && id == curFunc.replace('get_', ''))) {
 				return l.get.func();
 			}
 			return l.get != null && l.get.type == 'never' ? null : l.r;
@@ -732,7 +727,6 @@ class Interp {
 							inRecursion = true;
 							curFunc = name;
 							r = me.exprReturn(fexpr);
-							curFunc = '';
 							inRecursion = preRecursion;
 						} catch (e:Dynamic) {
 							me.locals = old;
@@ -748,7 +742,6 @@ class Interp {
 						inRecursion = true;
 						curFunc = name;
 						r = me.exprReturn(fexpr);
-						curFunc = '';
 						inRecursion = preRecursion;
 					}
 					restore(oldDecl);
