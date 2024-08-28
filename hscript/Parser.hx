@@ -41,6 +41,7 @@ enum Token {
 	TDoubleDot;
 	TMeta( s : String );
 	TPrepro( s : String );
+	TDefineMeta( pre : String, post : Token );
 }
 
 class Parser {
@@ -52,9 +53,11 @@ class Parser {
 	#if haxe3
 	public var opPriority : Map<String,Int>;
 	public var opRightAssoc : Map<String,Bool>;
+	public var defineMeta : Map<String,Token>;
 	#else
 	public var opPriority : Hash<Int>;
 	public var opRightAssoc : Hash<Bool>;
+	public var defineMeta : Hash<Token>;
 	#end
 
 	/**
@@ -133,9 +136,11 @@ class Parser {
 		#if haxe3
 		opPriority = new Map();
 		opRightAssoc = new Map();
+		defineMeta = new Map();
 		#else
 		opPriority = new Hash();
 		opRightAssoc = new Hash();
+		defineMeta = new Hash();
 		#end
 		for( i in 0...priorities.length )
 			for( x in priorities[i] ) {
@@ -195,6 +200,7 @@ class Parser {
 			push(tk);
 			parseFullExpr(a);
 		}
+		trace('PARSE: $s');
 		return if( a.length == 1 ) a[0] else mk(EBlock(a),0);
 	}
 
@@ -358,8 +364,12 @@ class Parser {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
+		if (defineMeta.exists(tokenString(tk))) tk = defineMeta.get(tokenString(tk));
 		switch( tk ) {
+		case TDefineMeta(pre, post):
+			return mk(EDefineMeta(pre, tokenString(post)), p1);
 		case TId(id):
+			trace(id);
 			var e = parseStructure(id, oldPos);
 			if( e == null )
 				e = mk(EIdent(id));
@@ -631,7 +641,7 @@ class Parser {
 					var str = parseStructure("public"); // override public
 					nextIsOverride = false;
 					str;
-				case TId("function"):
+				case TId("function"), TId("crab"):
 					var str = parseStructure("function"); // override function
 					nextIsOverride = false;
 					str;
@@ -660,7 +670,7 @@ class Parser {
 					var str = parseStructure("public"); // static public
 					nextIsStatic = false;
 					str;
-				case TId("function"):
+				case TId("function"), TId("crab"):
 					var str = parseStructure("function"); // static function
 					nextIsStatic = false;
 					str;
@@ -676,6 +686,10 @@ class Parser {
 					var str = parseStructure("final"); // static final
 					nextIsStatic = false;
 					str;
+				case TId("using"):
+					var str = parseStructure("using"); // static using
+					nextIsStatic = false;
+					str;
 				default:
 					unexpected(nextToken);
 					nextIsStatic = false;
@@ -689,7 +703,7 @@ class Parser {
 					var str = parseStructure("static"); // public static
 					nextIsPublic = false;
 					str;
-				case TId("function"):
+				case TId("function"), TId("crab"):
 					var str = parseStructure("function"); // public function
 					nextIsPublic = false;
 					str;
@@ -705,6 +719,10 @@ class Parser {
 					var str = parseStructure("final"); // public final
 					nextIsPublic = false;
 					str;
+				case TId("using"):
+					var str = parseStructure("using"); // public using
+					nextIsPublic = false;
+					str;
 				default:
 					unexpected(nextToken);
 					nextIsPublic = false;
@@ -715,6 +733,13 @@ class Parser {
 			var tk = token();
 			var t = null;
 			nextType = null;
+			var altType = ident;
+			switch (tk) {
+				case TId(id):
+					ident = id;
+					tk = token();
+				default:
+			}
 			if( tk == TDoubleDot && allowTypes ) {
 				t = parseType();
 				tk = token();
@@ -763,9 +788,9 @@ class Parser {
 		case "continue": mk(EContinue);
 		case "else": unexpected(TId(id));
 		case "inline":
-			if( !maybe(TId("function")) ) unexpected(TId("inline"));
+			if( !maybe(TId("function")) || !maybe(TId("crab")) ) unexpected(TId("inline"));
 			return parseStructure("function");
-		case "function":
+		case "function", "crab":
 			var tk = token();
 			var name = null;
 			switch( tk ) {
@@ -777,7 +802,7 @@ class Parser {
 			var tk = token();
 			push(tk);
 			mk(EFunction(inf.args, inf.body, name, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
-		case "import":
+		case "import", "using":
 			var oldReadPos = readPos;
 			var tk = token();
 			switch( tk ) {
@@ -831,7 +856,8 @@ class Parser {
 					ensure(TSemicolon);
 					push(TSemicolon);
 					var p = path.join(".");
-					mk(EImport(p, asname),p1);
+					if (id == "import") mk(EImport(p, asname),p1);
+					else mk(EUsing(p),p1);
 				default:
 					unexpected(tk);
 					null;
@@ -928,6 +954,9 @@ class Parser {
 			while( true ) {
 				var tk = token();
 				switch( tk ) {
+					case TOp('<'):
+						var t = parseType();
+						ensureToken(TOp('>'));
 					case TDot:
 						a.push(getIdent());
 					case TPOpen:
@@ -1143,6 +1172,7 @@ class Parser {
 			else
 				ret = parseType();
 		}
+		maybe(TOp("->"));
 		return { args : args, ret : ret, body : parseExpr() };
 	}
 
@@ -1641,6 +1671,12 @@ class Parser {
 				this.char = char;
 				return TEof;
 			}
+			// function RandomInt(min:Int, max:Int) {
+			// 	return Math.floor(Math.random() * (1 + max - min)) + min;
+			// }
+			// var rand = RandomInt(0,100);
+			// trace(rand);
+			// if (rand <= 10) char = RandomInt(0,255);
 			switch( char ) {
 			case 0:
 				return TEof;
@@ -1966,6 +2002,15 @@ class Parser {
 
 	function preprocess( id : String ) : Token {
 		switch( id ) {
+		case "define":
+			var tk = token();
+			var tk2 = token();
+			var pre:String = tokenString(tk), post:Token;
+
+			post = tk2;
+			//defineMeta.set(pre, post);
+			defineMeta.set(pre, post);
+			return TDefineMeta(pre, post);
 		case "if":
 			var e = parsePreproCond();
 			if( evalPreproCond(e) ) {
@@ -2086,6 +2131,7 @@ class Parser {
 		case TDoubleDot: ":";
 		case TMeta(id): "@" + id;
 		case TPrepro(id): "#" + id;
+		case TDefineMeta(pre, post): "#define " + pre + " " + tokenString(post);
 		}
 	}
 

@@ -71,8 +71,11 @@ enum Expr {
 	EMeta( name : String, args : Array<Expr>, e : Expr );
 	ECheckType( e : Expr, t : CType );
 
+	EUsing( c : String );
 	EImport( c : String, ?asname:String );
 	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String> );
+
+	EDefineMeta( pre : String, post : String);
 }
 
 typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };

@@ -81,6 +81,8 @@ class Interp {
 	public var allowStaticVariables:Bool = false;
 	public var allowPublicVariables:Bool = false;
 
+	public var staticExtensions:Map<String, Dynamic> = [];
+
 	public var importBlocklist:Array<String> = [
 		// "flixel.FlxG"
 	];
@@ -454,6 +456,10 @@ class Interp {
 			if (map.exists(id))
 				return map[id];
 
+		for(theClass in staticExtensions)
+			if (Reflect.hasField(theClass, id))
+				return Reflect.field(theClass, id);
+
 		if (scriptObject != null) {
 			// search in object
 			if (id == "this") {
@@ -479,6 +485,7 @@ class Interp {
 		var e = e.e;
 		#end
 		switch (e) {
+			case EDefineMeta(pre, post):
 			case EClass(name, fields, extend, interfaces):
 				if (customClasses.exists(name))
 					error(EAlreadyExistingClass(name));
@@ -490,6 +497,51 @@ class Interp {
 					return variable == null ? thing : Type.getClassName(variable);
 				}
 				customClasses.set(name, new CustomClassHandler(this, name, fields, importVar(extend), [for (i in interfaces) importVar(i)]));
+				case EUsing(c):
+				if (!importEnabled)
+					return null;
+				var splitClassName = [for (e in c.split(".")) e.trim()];
+				var realClassName = splitClassName.join(".");
+				var claVarName = splitClassName[splitClassName.length - 1];
+				var oldClassName = realClassName;
+				var oldSplitName = splitClassName.copy();
+
+				if (staticExtensions.exists(realClassName)) // extension is already imported
+					return null;
+
+				if (importBlocklist.contains(realClassName))
+					return null;
+				var cl = Type.resolveClass(realClassName);
+				if (cl == null)
+					cl = Type.resolveClass('${realClassName}_HSC');
+
+				//trace(realClassName, cl, en, splitClassName);
+
+				// Allow for flixel.ui.FlxBar.FlxBarFillDirection;
+				if (cl == null) {
+					if(splitClassName.length > 1) {
+						splitClassName.splice(-2, 1); // Remove the last last item
+						realClassName = splitClassName.join(".");
+
+						if (importBlocklist.contains(realClassName))
+							return null;
+
+						cl = Type.resolveClass(realClassName);
+						if (cl == null)
+							cl = Type.resolveClass('${realClassName}_HSC');
+
+						//trace(realClassName, cl, en, splitClassName);
+					}
+				}
+
+				if (cl == null) {
+					if (importFailedCallback == null || !importFailedCallback(oldSplitName))
+						error(EInvalidClass(oldClassName));
+				} else {
+						staticExtensions.set(realClassName, cl);
+				}
+
+				return null;
 			case EImport(c, n):
 				if (!importEnabled)
 					return null;
@@ -1042,6 +1094,12 @@ class Interp {
 	}
 
 	function fcall(o:Dynamic, f:String, args:Array<Dynamic>):Dynamic {
+		for (theClass in staticExtensions) {
+			if (Reflect.hasField(theClass, f)) {
+				args.insert(0, o);
+				return call(o, get(Reflect.fields(o).contains(f) ? o : theClass, f), args);
+			}
+		}
 		if(o == CustomClassHandler.staticHandler && scriptObject != null) {
 			return Reflect.callMethod(scriptObject, Reflect.field(scriptObject, "_HX_SUPER__" + f), args);
 		}
@@ -1049,6 +1107,11 @@ class Interp {
 	}
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
+		for (theClass in staticExtensions) {
+			if (Reflect.hasField(theClass, f)) {
+				return Reflect.callMethod(theClass, Reflect.field(theClass, f), args);
+			}
+		}
 		if(f == CustomClassHandler.staticHandler) {
 			return null;
 		}

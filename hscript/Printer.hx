@@ -114,6 +114,10 @@ class Printer {
 			return;
 		}
 		switch( #if hscriptPos e.e #else e #end ) {
+		case EDefineMeta(pre, post):
+			add("#define " + pre + " " + post);
+		case EUsing(p):
+			add("using " + p);
 		case EImport(c, n):
 			add("import " + c);
 			if(n != null)
