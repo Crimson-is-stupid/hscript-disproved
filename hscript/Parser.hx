@@ -364,12 +364,10 @@ class Parser {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
-		if (defineMeta.exists(tk)) tk = defineMeta.get(tk); 
 		switch( tk ) {
 		case TDefineMeta(pre, post):
 			return mk(EDefineMeta(tokenString(pre), tokenString(post)), p1);
 		case TId(id):
-			trace(id);
 			var e = parseStructure(id, oldPos);
 			if( e == null )
 				e = mk(EIdent(id));
