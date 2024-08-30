@@ -2001,10 +2001,7 @@ class Parser {
 	function preprocess( id : String ) : Token {
 		switch( id ) {
 		case "define":
-			var tk = token();
-			var tk2 = token();
-			var pre:Token = tk, post:Token = tk2;
-			//defineMeta.set(pre, post);
+			var pre:Token = token(), post:Token = token();
 			defineMeta.set(pre, post);
 			return TDefineMeta(pre, post);
 		case "if":
