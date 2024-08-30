@@ -364,6 +364,7 @@ class Parser {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
+		if (defineMeta.get(tk) != null) tk = defineMeta.get(tk);
 		switch( tk ) {
 		case TDefineMeta(pre, post):
 			return mk(EDefineMeta(tokenString(pre), tokenString(post)), p1);
@@ -2003,6 +2004,7 @@ class Parser {
 		case "define":
 			var pre:Token = token(), post:Token = token();
 			defineMeta.set(pre, post);
+			push(TSemicolon);
 			return TDefineMeta(pre, post);
 		case "if":
 			var e = parsePreproCond();
