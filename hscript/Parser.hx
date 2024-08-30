@@ -41,7 +41,7 @@ enum Token {
 	TDoubleDot;
 	TMeta( s : String );
 	TPrepro( s : String );
-	TDefineMeta( pre : String, post : Token );
+	TDefineMeta( pre : Token, post : Token );
 }
 
 class Parser {
@@ -53,7 +53,7 @@ class Parser {
 	#if haxe3
 	public var opPriority : Map<String,Int>;
 	public var opRightAssoc : Map<String,Bool>;
-	public var defineMeta : Map<String,Token>;
+	public var defineMeta : Map<Token,Token>;
 	#else
 	public var opPriority : Hash<Int>;
 	public var opRightAssoc : Hash<Bool>;
@@ -364,10 +364,10 @@ class Parser {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
-		if (defineMeta.exists(tokenString(tk))) tk = defineMeta.get(tokenString(tk));
+		if (defineMeta.exists(tk)) tk = defineMeta.get(tk); 
 		switch( tk ) {
 		case TDefineMeta(pre, post):
-			return mk(EDefineMeta(pre, tokenString(post)), p1);
+			return mk(EDefineMeta(tokenString(pre), tokenString(post)), p1);
 		case TId(id):
 			trace(id);
 			var e = parseStructure(id, oldPos);
@@ -1926,7 +1926,7 @@ class Parser {
 						if( !idents[char] ) {
 							this.char = char;
 							if(id == "is") return TOp("is");
-							return TId(id);
+							return defineMeta.get(TId(id)) != null ? defineMeta.get(TId(id)) : TId(id);
 						}
 						id += String.fromCharCode(char);
 					}
@@ -2005,9 +2005,7 @@ class Parser {
 		case "define":
 			var tk = token();
 			var tk2 = token();
-			var pre:String = tokenString(tk), post:Token;
-
-			post = tk2;
+			var pre:Token = tk, post:Token = tk2;
 			//defineMeta.set(pre, post);
 			defineMeta.set(pre, post);
 			return TDefineMeta(pre, post);
@@ -2131,7 +2129,7 @@ class Parser {
 		case TDoubleDot: ":";
 		case TMeta(id): "@" + id;
 		case TPrepro(id): "#" + id;
-		case TDefineMeta(pre, post): "#define " + pre + " " + tokenString(post);
+		case TDefineMeta(pre, post): "#define " + tokenString(pre) + " " + tokenString(post);
 		}
 	}
 
