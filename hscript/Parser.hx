@@ -239,6 +239,7 @@ class Parser {
 
 	function getIdent() {
 		var tk = token();
+		if (defineMeta.get(tk) != null) tk = defineMeta.get(tk);
 		switch( tk ) {
 			case TId(id): return id;
 			default:
