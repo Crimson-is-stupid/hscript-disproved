@@ -686,6 +686,9 @@ class Interp {
 						}
 						return fcall(obj, f, args);
 					default:
+						var arg = Type.enumParameters(e.e)[0];
+						if (!(publicVariables.exists(arg) || staticVariables.exists(arg) || variables.exists(arg) || customClasses.exists(arg)))
+							e.e = EIdent(arg + "__OVERLOAD__" + args.length);
 						return call(null, expr(e), args);
 				}
 			case EIf(econd, e1, e2):
@@ -1094,10 +1097,10 @@ class Interp {
 	}
 
 	function fcall(o:Dynamic, f:String, args:Array<Dynamic>):Dynamic {
-		for (theClass in staticExtensions) {
+		if (!Reflect.fields(o).contains(f)) for (theClass in staticExtensions) {
 			if (Reflect.hasField(theClass, f)) {
 				args.insert(0, o);
-				return call(o, get(Reflect.fields(o).contains(f) ? o : theClass, f), args);
+				return call(o, get(theClass, f), args);
 			}
 		}
 		if(o == CustomClassHandler.staticHandler && scriptObject != null) {
@@ -1107,7 +1110,7 @@ class Interp {
 	}
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
-		for (theClass in staticExtensions) {
+		if (!Reflect.fields(o).contains(f)) for (theClass in staticExtensions) {
 			if (Reflect.hasField(theClass, f)) {
 				return Reflect.callMethod(theClass, Reflect.field(theClass, f), args);
 			}

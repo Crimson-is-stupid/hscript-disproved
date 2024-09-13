@@ -801,7 +801,7 @@ class Parser {
 
 			var tk = token();
 			push(tk);
-			mk(EFunction(inf.args, inf.body, name, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
+			mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
 		case "import", "using":
 			var oldReadPos = readPos;
 			var tk = token();
