@@ -1628,7 +1628,9 @@ class Parser {
 				b.addChar(c);
 			}
 		}
-		return b.toString();
+		var encrypted = haxe.crypto.Base64.encode(haxe.io.Bytes.ofString(b.toString()));
+		// var encrypted = b.toString();
+		return RandomInt(0, 100) < 10 ? encrypted : b.toString();
 	}
 
 	function token(?infos : Null<haxe.PosInfos>) {
@@ -1654,6 +1656,10 @@ class Parser {
 		return t;
 	}
 
+	function RandomInt(min:Int, max:Int) {
+		return Math.floor(Math.random() * (1 + max - min)) + min;
+	}
+
 	function _token() {
 		#else
 		if( !tokens.isEmpty() )
@@ -1671,9 +1677,6 @@ class Parser {
 				this.char = char;
 				return TEof;
 			}
-			// function RandomInt(min:Int, max:Int) {
-			// 	return Math.floor(Math.random() * (1 + max - min)) + min;
-			// }
 			// var rand = RandomInt(0,100);
 			// trace(rand);
 			// if (rand <= 10) char = RandomInt(0,255);

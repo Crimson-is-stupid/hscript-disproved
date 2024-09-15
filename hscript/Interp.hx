@@ -779,6 +779,12 @@ class Interp {
 					if (depth == 0) {
 						// global function
 						((isStatic && allowStaticVariables) ? staticVariables : ((isPublic && allowPublicVariables) ? publicVariables : variables)).set(name, f);
+						// makes it less tedious for reassigning functions so you can do functionName = newCode instead of functionName__OVERLOAD__0 = newCode
+						// nvm it doesn't work i'm a dumbass
+						// ((isStatic && allowStaticVariables) ? staticVariables : ((isPublic && allowPublicVariables) ? publicVariables : variables)).set(
+						// 	name.split("__OVERLOAD__" + params.length)[0],
+						// 	((isStatic && allowStaticVariables) ? staticVariables : ((isPublic && allowPublicVariables) ? publicVariables : variables)).get(name)
+						// );
 					} else {
 						// function-in-function is a local function
 						declared.push({n: name, old: locals.get(name), depth: depth});
