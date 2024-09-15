@@ -687,8 +687,9 @@ class Interp {
 						return fcall(obj, f, args);
 					default:
 						var arg = Type.enumParameters(e.e)[0];
-						if (!(publicVariables.exists(arg) || staticVariables.exists(arg) || variables.exists(arg) || customClasses.exists(arg)))
-							e.e = EIdent(arg + "__OVERLOAD__" + args.length);
+						var overLoadedArg = arg + "__OVERLOAD__" + args.length;
+						if (publicVariables.exists(overLoadedArg) || staticVariables.exists(overLoadedArg) || variables.exists(overLoadedArg))
+							e.e = EIdent(overLoadedArg);
 						return call(null, expr(e), args);
 				}
 			case EIf(econd, e1, e2):
