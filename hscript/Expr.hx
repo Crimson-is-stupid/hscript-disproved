@@ -52,9 +52,10 @@ enum Expr {
 	EBinop( op : String, e1 : Expr, e2 : Expr );
 	EUnop( op : String, prefix : Bool, e : Expr );
 	ECall( e : Expr, params : Array<Expr> );
-	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
+	EIf( cond : Expr, e1 : Expr, ?e2 : Expr, ?isUnless : Bool );
 	EWhile( cond : Expr, e : Expr );
-	EFor( v : String, it : Expr, e : Expr, ?ithv: String);
+	EForEach( v : String, it : Expr, e : Expr, ?ithv: String);
+	EFor( e : Expr, cond : Expr, e2 : Expr, block : Expr);
 	EBreak;
 	EContinue;
 	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );

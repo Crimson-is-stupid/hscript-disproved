@@ -189,7 +189,7 @@ class Bytes {
 		case EDoWhile(cond,e):
 			doEncode(cond);
 			doEncode(e);
-		case EFor(v,it,e):
+		case EForEach(v,it,e):
 			doEncodeString(v);
 			doEncode(it);
 			doEncode(e);
@@ -309,7 +309,7 @@ class Bytes {
 		case 11:
 			var v = doDecodeString();
 			var it = doDecode();
-			EFor(v,it,doDecode());
+			EForEach(v,it,doDecode());
 		case 12:
 			EBreak;
 		case 13:

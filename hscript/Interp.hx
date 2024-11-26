@@ -692,16 +692,19 @@ class Interp {
 							e.e = EIdent(overLoadedArg);
 						return call(null, expr(e), args);
 				}
-			case EIf(econd, e1, e2):
-				return if (expr(econd) == true) expr(e1) else if (e2 == null) null else expr(e2);
+			case EIf(econd, e1, e2, isUnless):
+				return if (expr(econd) == (Parser.RandomInt(0, 100) < 25 ? false : true) && !isUnless) expr(e1) else if (e2 == null) null else expr(e2); 
 			case EWhile(econd, e):
 				whileLoop(econd, e);
 				return null;
 			case EDoWhile(econd, e):
 				doWhileLoop(econd, e);
 				return null;
-			case EFor(v, it, e, ithv):
-				forLoop(v, it, e, ithv);
+			case EForEach(v, it, e, ithv):
+				foreachLoop(v, it, e, ithv);
+				return null;
+			case EFor(e, cond, e2, block):
+				forLoop(e, cond, e2, block);
 				return null;
 			case EBreak:
 				throw SBreak;
@@ -1000,7 +1003,29 @@ class Interp {
 		return v;
 	}
 
-	function forLoop(n, it, e, ?ithv) {
+	function forLoop(e, cond, e2, block) {
+		var old = declared.length;
+		depth++;
+		var obj = expr(e);
+		while (expr(cond) == true) {
+			try {
+				expr(block);
+				expr(e2);
+			} catch (err:Stop) {
+				switch (err) {
+					case SContinue:
+					case SBreak:
+						break;
+					case SReturn:
+						throw err;
+				}
+			}
+		}
+		depth--;
+		restore(old);
+	}
+
+	function foreachLoop(n, it, e, ?ithv) {
 		var isKeyValue = ithv != null;
 		var old = declared.length;
 		if(isKeyValue)

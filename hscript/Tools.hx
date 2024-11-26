@@ -41,7 +41,8 @@ class Tools {
 		case EIf(c, e1, e2): f(c); f(e1); if( e2 != null ) f(e2);
 		case EWhile(c, e): f(c); f(e);
 		case EDoWhile(c, e): f(c); f(e);
-		case EFor(_, it, e): f(it); f(e);
+		case EForEach(_, it, e): f(it); f(e);
+		case EFor(e, cond, e2, block): f(e); f(cond); f(e2); f(block);
 		case EBreak,EContinue:
 		case EFunction(_, e, _, _): f(e);
 		case EReturn(e): if( e != null ) f(e);
@@ -80,7 +81,8 @@ class Tools {
 		case EIf(c, e1, e2): EIf(f(c),f(e1),if( e2 != null ) f(e2) else null);
 		case EWhile(c, e): EWhile(f(c),f(e));
 		case EDoWhile(c, e): EDoWhile(f(c),f(e));
-		case EFor(v, it, e): EFor(v, f(it), f(e));
+		case EForEach(v, it, e): EForEach(v, f(it), f(e));
+		case EFor(e, cond, e2, block): EFor(f(e), f(cond), f(e2), f(block));  
 		case EFunction(args, e, name, t): EFunction(args, f(e), name, t);
 		case EReturn(e): EReturn(if( e != null ) f(e) else null);
 		case EArray(e, i): EArray(f(e),f(i));

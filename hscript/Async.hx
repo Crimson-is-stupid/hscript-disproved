@@ -123,7 +123,7 @@ class Async {
 			return currentBreak(e);
 		case EContinue if( currentLoop != null ):
 			return block([retNull(currentLoop, e), mk(EReturn(),e)],e);
-		case EFor(_), EWhile(_):
+		case EForEach(_), EWhile(_):
 			var oldLoop = currentLoop, oldBreak = currentBreak;
 			currentLoop = null;
 			currentBreak = null;
@@ -284,7 +284,7 @@ class Async {
 			return makeCall( ident( mode != null ? i : "a_" + i,e) , args, rest, exit, mode == ForceSync);
 		case ECall(expr(_) => EField(e, f), args):
 			return makeCall(field(e,"a_"+f,e), args, rest, exit);
-		case EFor(v, eit, eloop):
+		case EForEach(v, eit, eloop):
 			var id = ++uid;
 			var it = ident("_i" + id,e);
 			var oldLoop = currentLoop, oldBreak = currentBreak;

@@ -41,7 +41,7 @@ enum Token {
 	TDoubleDot;
 	TMeta( s : String );
 	TPrepro( s : String );
-	TDefineMeta( pre : Token, post : Token );
+	TDefineMeta( pre : Token, ?post : Token );
 }
 
 class Parser {
@@ -79,6 +79,11 @@ class Parser {
 		allow haxe metadata declarations
 	**/
 	public var allowMetadata : Bool;
+
+	/**
+		whether to ignore the current define macro
+	**/
+	public var ignoreDefineMeta : Bool;
 
 	/**
 		resume from parsing errors (when parsing incomplete code, during completion for example)
@@ -237,9 +242,14 @@ class Parser {
 		return false;
 	}
 
+	function getDefineMeta(tk) {
+		if (defineMeta.exists(tk) && !ignoreDefineMeta) return defineMeta.get(tk);
+		else return tk;
+	}
+
 	function getIdent() {
 		var tk = token();
-		if (defineMeta.get(tk) != null) tk = defineMeta.get(tk);
+		tk = getDefineMeta(tk);
 		switch( tk ) {
 			case TId(id): return id;
 			default:
@@ -295,7 +305,8 @@ class Parser {
 			case EUnop(_,prefix,e): !prefix && isBlock(e);
 			case EWhile(_,e): isBlock(e);
 			case EDoWhile(_,e): isBlock(e);
-			case EFor(_,_,e): isBlock(e);
+			case EForEach(_,_,e): isBlock(e);
+			case EFor(_,_,_,e): isBlock(e);
 			case EReturn(e): e != null && isBlock(e);
 			case ETry(_, _, _, e): isBlock(e);
 			case EMeta(_, _, e): isBlock(e);
@@ -365,10 +376,10 @@ class Parser {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
-		if (defineMeta.get(tk) != null) tk = defineMeta.get(tk);
+		tk = getDefineMeta(tk);
 		switch( tk ) {
 		case TDefineMeta(pre, post):
-			return mk(EDefineMeta(tokenString(pre), tokenString(post)), p1);
+			return mk(EDefineMeta(tokenString(pre), post != null ? tokenString(post) : ""), p1);
 		case TId(id):
 			var e = parseStructure(id, oldPos);
 			if( e == null )
@@ -492,7 +503,7 @@ class Parser {
 			}
 			if( a.length == 1 && a[0] != null ) // What is this for???
 				switch( expr(a[0]) ) {
-					case EFor(_), EWhile(_), EDoWhile(_):
+					case EForEach(_), EWhile(_), EDoWhile(_), EFor(_):
 						var tmp = "__a_" + (uid++);
 						var e = mk(EBlock([
 							mk(EVar(tmp, null, mk(EArrayDecl([]), p1)), p1),
@@ -558,8 +569,10 @@ class Parser {
 	function mapCompr( tmp : String, e : Expr ) {
 		if( e == null ) return null;
 		var edef = switch( expr(e) ) {
-		case EFor(v, it, e2, ithv):
-			EFor(v, it, mapCompr(tmp, e2), ithv);
+		case EForEach(v, it, e2, ithv):
+			EForEach(v, it, mapCompr(tmp, e2), ithv);
+		case EFor(e, cond, e2, block):
+			EFor(e, cond, e2, block);
 		case EWhile(cond, e2):
 			EWhile(cond, mapCompr(tmp, e2));
 		case EDoWhile(cond, e2):
@@ -633,6 +646,25 @@ class Parser {
 				if( semic ) push(TSemicolon);
 			}
 			mk(EIf(cond,e1,e2),p1,(e2 == null) ? tokenMax : pmax(e2));
+		case "unless":
+			ensure(TPOpen);
+			var cond = parseExpr();
+			ensure(TPClose);
+			var e1 = parseExpr();
+			var e2 = null;
+			var semic = false;
+			var tk = token();
+			if( tk == TSemicolon ) {
+				semic = true;
+				tk = token();
+			}
+			if( Type.enumEq(tk,TId("else")) )
+				e2 = parseExpr();
+			else {
+				push(tk);
+				if( semic ) push(TSemicolon);
+			}
+			mk(EIf(cond,e1,e2, true),p1,(e2 == null) ? tokenMax : pmax(e2));
 		case "override":
 			nextIsOverride = true;
 			var nextToken = token();
@@ -767,7 +799,7 @@ class Parser {
 			}
 			var econd = parseExpr();
 			mk(EDoWhile(econd,e),p1,pmax(econd));
-		case "for":
+		case "foreach":
 			ensure(TPOpen);
 			var ithv:String = null;
 			var vname = getIdent();
@@ -783,7 +815,18 @@ class Parser {
 			var eiter = parseExpr();
 			ensure(TPClose);
 			var e = parseExpr();
-			mk(EFor(vname,eiter,e,ithv),p1,pmax(e));
+			mk(EForEach(vname,eiter,e,ithv),p1,pmax(e));
+		case "for":
+			ensure(TPOpen);
+			token();//var
+			var e = parseStructure("var");
+			ensure(TSemicolon);
+			var cond = parseExpr();
+			ensure(TSemicolon);
+			var e2 = parseExpr();
+			ensure(TPClose);
+			var block = parseExpr();
+			mk(EFor(e,cond,e2,block),p1,pmax(block));
 		case "break": mk(EBreak);
 		case "continue": mk(EContinue);
 		case "else": unexpected(TId(id));
@@ -1117,7 +1160,7 @@ class Parser {
 		}
 	}
 
-	function parseFunctionArgs() {
+	function parseFunctionArgs():Array<Argument> {
 		var args = new Array();
 		var tk = token();
 		if( tk != TPClose ) {
@@ -1656,7 +1699,7 @@ class Parser {
 		return t;
 	}
 
-	function RandomInt(min:Int, max:Int) {
+	static public function RandomInt(min:Int, max:Int) {
 		return Math.floor(Math.random() * (1 + max - min)) + min;
 	}
 
@@ -1929,7 +1972,7 @@ class Parser {
 						if( !idents[char] ) {
 							this.char = char;
 							if(id == "is") return TOp("is");
-							return defineMeta.get(TId(id)) != null ? defineMeta.get(TId(id)) : TId(id);
+							return getDefineMeta(TId(id));
 						}
 						id += String.fromCharCode(char);
 					}
@@ -2006,8 +2049,33 @@ class Parser {
 	function preprocess( id : String ) : Token {
 		switch( id ) {
 		case "define":
-			var pre:Token = token(), post:Token = token();
-			defineMeta.set(pre, post);
+			var pre:Token = token();
+			var post:Token = null;
+			// var args = [];
+			// trace("test");
+			var char;
+			if( this.char < 0 )
+				char = readChar();
+			else {
+				char = this.char;
+				// this.char = -1;
+			}
+			if (char == "(".code) {
+				token(); // token should be (
+				var peakTokens = [];
+				var args = [for (arg in parseFunctionArgs()) arg.name]; 
+				var line = this.line;
+				while (char != 10 && char != 13 && char != -1) {
+					char = StringTools.fastCodeAt(input, readPos);
+					peakTokens.push(token()); 
+				}
+				trace(peakTokens);
+				trace(args);
+			}
+			else {
+				post = token();
+				defineMeta.set(pre, post);
+			}
 			push(TSemicolon);
 			return TDefineMeta(pre, post);
 		case "if":
@@ -2130,7 +2198,7 @@ class Parser {
 		case TDoubleDot: ":";
 		case TMeta(id): "@" + id;
 		case TPrepro(id): "#" + id;
-		case TDefineMeta(pre, post): "#define " + tokenString(pre) + " " + tokenString(post);
+		case TDefineMeta(pre): "#define " + tokenString(pre);
 		}
 	}
 

@@ -221,7 +221,7 @@ class Printer {
 			add(" while ( ");
 			expr(cond);
 			add(" )");
-		case EFor(v, it, e, ithv):
+		case EForEach(v, it, e, ithv):
 			if(ithv != null)
 				add("for( "+ithv+" => "+v+" in ");
 			else
@@ -229,6 +229,9 @@ class Printer {
 			expr(it);
 			add(" ) ");
 			expr(e);
+		case EFor(e, cond, e2, block):
+			//add("forc (" + expr(e) + ";" + expr(cond) + ";" + expr(e2) + ")");
+			expr(block);
 		case EBreak:
 			add("break");
 		case EContinue:
