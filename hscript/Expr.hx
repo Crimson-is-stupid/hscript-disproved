@@ -55,7 +55,7 @@ enum Expr {
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr, ?isUnless : Bool );
 	EWhile( cond : Expr, e : Expr );
 	EForEach( v : String, it : Expr, e : Expr, ?ithv: String);
-	EFor( e : Expr, cond : Expr, e2 : Expr, block : Expr);
+	EFor( e : Null<Expr>, cond : Null<Expr>, e2 : Null<Expr>, block : Expr);
 	EBreak;
 	EContinue;
 	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );

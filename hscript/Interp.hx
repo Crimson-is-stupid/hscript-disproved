@@ -163,6 +163,7 @@ class Interp {
 		binops.set("||", function(e1, e2) return me.expr(e1) == true || me.expr(e2) == true);
 		binops.set("&&", function(e1, e2) return me.expr(e1) == true && me.expr(e2) == true);
 		binops.set("is", checkIsType);
+		binops.set("isnot", function(e1, e2) return !checkIsType(e1,e2)); 
 		binops.set("=", assign);
 		binops.set("??", function(e1, e2) {
 			var expr1:Dynamic = me.expr(e1);
@@ -1006,11 +1007,11 @@ class Interp {
 	function forLoop(e, cond, e2, block) {
 		var old = declared.length;
 		depth++;
-		var obj = expr(e);
-		while (expr(cond) == true) {
+		if (e != null) expr(e);
+		while (cond != null ? expr(cond) == true : true) {
 			try {
 				expr(block);
-				expr(e2);
+				if (e2 != null) expr(e2);
 			} catch (err:Stop) {
 				switch (err) {
 					case SContinue:

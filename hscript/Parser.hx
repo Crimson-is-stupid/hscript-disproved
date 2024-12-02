@@ -368,7 +368,6 @@ class Parser {
 		}
 		return parseExprNext(mk(EObject(fl),p1));
 	}
-
 	function parseExpr() {
 
 		var oldPos = readPos;
@@ -381,7 +380,7 @@ class Parser {
 		case TDefineMeta(pre, post):
 			return mk(EDefineMeta(tokenString(pre), post != null ? tokenString(post) : ""), p1);
 		case TId(id):
-			var e = parseStructure(id, oldPos);
+			var e = parseStructure(id, oldPos, tk);
 			if( e == null )
 				e = mk(EIdent(id));
 			return parseExprNext(e);
@@ -622,7 +621,7 @@ class Parser {
 	var nextIsStatic:Bool = false;
 	var nextIsPublic:Bool = false;
 	var nextType:CType = null;
-	function parseStructure(id, ?oldPos:Int) {
+	function parseStructure(id, ?oldPos:Int, ?oldTk:Token) {
 		#if hscriptPos
 		var p1 = tokenMin;
 		#end
@@ -669,24 +668,8 @@ class Parser {
 			nextIsOverride = true;
 			var nextToken = token();
 			switch(nextToken) {
-				case TId("public"):
-					var str = parseStructure("public"); // override public
-					nextIsOverride = false;
-					str;
-				case TId("function"), TId("crab"):
-					var str = parseStructure("function"); // override function
-					nextIsOverride = false;
-					str;
-				case TId("static"):
-					var str = parseStructure("static"); // override static
-					nextIsOverride = false;
-					str;
-				case TId("var"):
-					var str = parseStructure("var"); // override var
-					nextIsOverride = false;
-					str;
-				case TId("final"):
-					var str = parseStructure("final"); // override final
+				case TId(name):
+					var str = parseStructure(name, oldPos, nextToken); // override
 					nextIsOverride = false;
 					str;
 				default:
@@ -698,28 +681,8 @@ class Parser {
 			nextIsStatic = true;
 			var nextToken = token();
 			switch(nextToken) {
-				case TId("public"):
-					var str = parseStructure("public"); // static public
-					nextIsStatic = false;
-					str;
-				case TId("function"), TId("crab"):
-					var str = parseStructure("function"); // static function
-					nextIsStatic = false;
-					str;
-				case TId("override"):
-					var str = parseStructure("override"); // static override
-					nextIsStatic = false;
-					str;
-				case TId("var"):
-					var str = parseStructure("var"); // static var
-					nextIsStatic = false;
-					str;
-				case TId("final"):
-					var str = parseStructure("final"); // static final
-					nextIsStatic = false;
-					str;
-				case TId("using"):
-					var str = parseStructure("using"); // static using
+				case TId(name):
+					var str = parseStructure(name, oldPos, nextToken); // static
 					nextIsStatic = false;
 					str;
 				default:
@@ -731,28 +694,8 @@ class Parser {
 			nextIsPublic = true;
 			var nextToken = token();
 			switch(nextToken) {
-				case TId("static"):
-					var str = parseStructure("static"); // public static
-					nextIsPublic = false;
-					str;
-				case TId("function"), TId("crab"):
-					var str = parseStructure("function"); // public function
-					nextIsPublic = false;
-					str;
-				case TId("override"):
-					var str = parseStructure("override"); // public override
-					nextIsPublic = false;
-					str;
-				case TId("var"):
-					var str = parseStructure("var"); // public var
-					nextIsPublic = false;
-					str;
-				case TId("final"):
-					var str = parseStructure("final"); // public final
-					nextIsPublic = false;
-					str;
-				case TId("using"):
-					var str = parseStructure("using"); // public using
+				case TId(name):
+					var str = parseStructure(name, oldPos, nextToken); // public
 					nextIsPublic = false;
 					str;
 				default:
@@ -817,14 +760,24 @@ class Parser {
 			var e = parseExpr();
 			mk(EForEach(vname,eiter,e,ithv),p1,pmax(e));
 		case "for":
+			var tk = null;
 			ensure(TPOpen);
-			token();//var
-			var e = parseStructure("var");
-			ensure(TSemicolon);
-			var cond = parseExpr();
-			ensure(TSemicolon);
-			var e2 = parseExpr();
-			ensure(TPClose);
+			var e = null;
+			tk = token();
+			if (tk.match(TId("var"))) {
+				e = parseStructure("var");
+				token();
+			} 
+			var cond = null;
+			if (!tk.match(TSemicolon)) {
+				cond = parseExpr();
+				token();
+			} 
+			var e2 = null;
+			if (!tk.match(TPClose)) {
+				e2 = parseExpr();
+				token();
+			} 
 			var block = parseExpr();
 			mk(EFor(e,cond,e2,block),p1,pmax(block));
 		case "break": mk(EBreak);
@@ -1104,6 +1057,27 @@ class Parser {
 			}
 			mk(ESwitch(e, cases, def), p1, tokenMax);
 		default:
+			var tk = token();
+			if (tk.match(TId(_))) {
+				push(oldTk);
+				var type = parseType();
+				push(tk);
+				var name = getIdent();
+				if (maybe(TPOpen)) {
+					push(TPOpen);
+					var inf = parseFunctionDecl();
+					return mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, type, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
+				}
+				tk = token();
+				var value = null;
+				if( Type.enumEq(tk,TOp("=")) )
+					value = parseExpr();
+				else
+					push(tk);
+				nextType = null;
+				return mk(EVar(name, type, value, nextIsPublic, nextIsStatic), p1, (value == null) ? tokenMax : pmax(value));
+			}
+			push(tk);
 			null;
 		}
 	}
@@ -1183,8 +1157,18 @@ class Parser {
 				args.push(arg);
 				if( opt ) arg.opt = true;
 				if( allowTypes ) {
-					if( maybe(TDoubleDot) )
+					var oldTk = tk;
+					tk = token();
+					push(tk);
+					if (tk.match(TId(_))) {
+						push(oldTk);
 						arg.t = parseType();
+						arg.name = getIdent();
+					}
+					if ( maybe(TDoubleDot) && arg.t == null )
+						arg.t = parseType();
+					else if ( arg.t != null && maybe(TDoubleDot) ) 
+						unexpected(tk);
 					if( maybe(TOp("="))) {
 						arg.value = parseExpr();
 						arg.opt = true;
@@ -1971,7 +1955,7 @@ class Parser {
 						if( StringTools.isEof(char) ) char = 0;
 						if( !idents[char] ) {
 							this.char = char;
-							if(id == "is") return TOp("is");
+							if(id == "is") return TOp("is" + (maybe(TId("not")) ? "not" : ""));
 							return getDefineMeta(TId(id));
 						}
 						id += String.fromCharCode(char);
