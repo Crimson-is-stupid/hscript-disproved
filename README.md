@@ -1,3 +1,24 @@
+Useless Features
+=======
+Hey you there, ever wanted extremely stupid features that no one would benefit from in hscript?
+no?
+well you came to the right place cause here we have undeniably stupid hscript features that you won't benefit from
+such as
+
+c style for loops
+
+c style functions
+
+static extensions
+
+basic define pre processor functionality
+
+method overloads
+
+crab token used as an alternative for function
+
+10% of base64 encrpytion on your string that will just piss you off
+
 hscript-improved
 =======
 
