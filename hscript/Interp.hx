@@ -491,6 +491,8 @@ class Interp {
 				if (customClasses.exists(name))
 					error(EAlreadyExistingClass(name));
 
+				variables.set(name, {});
+
 				inline function importVar(thing:String):String {
 					if (thing == null)
 						return null;
@@ -756,8 +758,9 @@ class Interp {
 					var old = me.locals, depth = me.depth;
 					me.depth++;
 					me.locals = me.duplicate(capturedLocals);
-					for (i in 0...params.length)
+					for (i in 0...params.length) {
 						me.locals.set(params[i].name, {r: args[i], depth: depth});
+					}
 					var r = null;
 					var oldDecl = declared.length;
 					if (inTry)

@@ -1,4 +1,5 @@
 package hscript;
+import hscript.Expr;
 
 using StringTools;
 
@@ -17,6 +18,19 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 		this.fields = fields;
 		this.extend = extend;
 		this.interfaces = interfaces;
+
+		for (field in fields) {
+			switch (field.e) {
+				case EVar(n, _, e, _, true, name):
+					Reflect.setProperty(ogInterp.variables.get(name), n, (e == null) ? null : ogInterp.expr(e));
+					fields.remove(field);
+				case EFunction(args, e, n, _, _, true, _, name):
+					Reflect.setProperty(ogInterp.variables.get(name), n.split("__OVERLOAD__" + args.length)[0], ogInterp.expr(field));
+					ogInterp.staticVariables.remove(n);
+					fields.remove(field);
+				default: continue;
+			}
+		}
 	}
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
@@ -48,7 +62,6 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 				interp.variables.set(key, value);
 			}
 		}
-
 		for(expr in fields) {
 			@:privateAccess
 			interp.exprReturn(expr);

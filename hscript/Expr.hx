@@ -45,7 +45,7 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String );
-	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool );
+	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool, ?className : Null<String> );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String , ?safe : Bool );
@@ -58,7 +58,7 @@ enum Expr {
 	EFor( e : Null<Expr>, cond : Null<Expr>, e2 : Null<Expr>, block : Expr);
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );
+	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool, ?className : Null<String> );
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EArrayDecl( e : Array<Expr>, ?wantedType: CType );
@@ -79,7 +79,7 @@ enum Expr {
 	EDefineMeta( pre : String, post : String);
 }
 
-typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };
+typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?ref : Bool, ?value : Expr };
 
 typedef Metadata = Array<{ name : String, params : Array<Expr> }>;
 

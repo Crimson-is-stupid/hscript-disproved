@@ -242,6 +242,14 @@ class Parser {
 		return false;
 	}
 
+	function not(tk) {
+		var t = token();
+		if( !Type.enumEq(t, tk) )
+			return true;
+		push(t);
+		return false;
+	}
+
 	function getDefineMeta(tk) {
 		if (defineMeta.exists(tk) && !ignoreDefineMeta) return defineMeta.get(tk);
 		else return tk;
@@ -621,6 +629,7 @@ class Parser {
 	var nextIsStatic:Bool = false;
 	var nextIsPublic:Bool = false;
 	var nextType:CType = null;
+	var className:Null<String> = null;
 	function parseStructure(id, ?oldPos:Int, ?oldTk:Token) {
 		#if hscriptPos
 		var p1 = tokenMin;
@@ -727,7 +736,8 @@ class Parser {
 			else
 				push(tk);
 			nextType = null;
-			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic), p1, (e == null) ? tokenMax : pmax(e));
+			trace(nextIsStatic);
+			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic, className), p1, (e == null) ? tokenMax : pmax(e));
 		case "while":
 			var econd = parseExpr();
 			var e = parseExpr();
@@ -763,21 +773,25 @@ class Parser {
 			var tk = null;
 			ensure(TPOpen);
 			var e = null;
-			tk = token();
-			if (tk.match(TId("var"))) {
+			if (maybe(TId("var"))) {
 				e = parseStructure("var");
-				token();
-			} 
+			}
+			tk = token();
 			var cond = null;
+			tk = token();
 			if (!tk.match(TSemicolon)) {
+				push(tk);
+				trace('test', tk);
 				cond = parseExpr();
-				token();
 			} 
+			tk = token();
 			var e2 = null;
+			tk = token();
 			if (!tk.match(TPClose)) {
 				e2 = parseExpr();
 				token();
-			} 
+			}
+			token();
 			var block = parseExpr();
 			mk(EFor(e,cond,e2,block),p1,pmax(block));
 		case "break": mk(EBreak);
@@ -797,7 +811,7 @@ class Parser {
 
 			var tk = token();
 			push(tk);
-			mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
+			mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride, className),p1,pmax(inf.body));
 		case "import", "using":
 			var oldReadPos = readPos;
 			var tk = token();
@@ -926,14 +940,15 @@ class Parser {
 						//push(tk);
 				}
 			}*/
-
+			className = name;
 			var fields = [];
 			ensure(TBrOpen);
 			while( !maybe(TBrClose) ) {
-				if(token() == TSemicolon) continue;
+				if(maybe(TSemicolon)) continue;
 				var a = parseExpr();
 				fields.push(a);
 			}
+			className = null;
 
 			var tk = token();
 			push(tk);
@@ -1066,7 +1081,7 @@ class Parser {
 				if (maybe(TPOpen)) {
 					push(TPOpen);
 					var inf = parseFunctionDecl();
-					return mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, type, nextIsPublic, nextIsStatic, nextIsOverride),p1,pmax(inf.body));
+					return mk(EFunction(inf.args, inf.body, name + '__OVERLOAD__' + inf.args.length, type, nextIsPublic, nextIsStatic, nextIsOverride, className),p1,pmax(inf.body));
 				}
 				tk = token();
 				var value = null;
@@ -1075,7 +1090,7 @@ class Parser {
 				else
 					push(tk);
 				nextType = null;
-				return mk(EVar(name, type, value, nextIsPublic, nextIsStatic), p1, (value == null) ? tokenMax : pmax(value));
+				return mk(EVar(name, type, value, nextIsPublic, nextIsStatic, className), p1, (value == null) ? tokenMax : pmax(value));
 			}
 			push(tk);
 			null;
@@ -1140,7 +1155,8 @@ class Parser {
 		if( tk != TPClose ) {
 			var done = false;
 			while( !done ) {
-				var name = null, opt = false;
+				var name = null, opt = false, ref = false;
+				if (maybe(TId("ref"))) ref = true;
 				switch( tk ) {
 					case TQuestion:
 						opt = true;
@@ -1155,6 +1171,7 @@ class Parser {
 				}
 				var arg : Argument = { name : name };
 				args.push(arg);
+				if( ref ) arg.ref = true;
 				if( opt ) arg.opt = true;
 				if( allowTypes ) {
 					var oldTk = tk;
@@ -1672,6 +1689,7 @@ class Parser {
 			tokenMin = t.min;
 			tokenMax = t.max;
 			//ttrace(t.t, infos);
+			// trace(t.t);
 			return t.t;
 		}
 		oldTokenMin = tokenMin;
@@ -1680,6 +1698,7 @@ class Parser {
 		var t = _token();
 		//ttrace(t, infos);
 		tokenMax = (this.char < 0) ? readPos - 1 : readPos - 2;
+		// trace(t);
 		return t;
 	}
 
