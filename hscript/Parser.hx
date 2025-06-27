@@ -650,7 +650,7 @@ class Parser {
 		var p1 = tokenMin;
 		#end
 		return switch( id ) {
-		case "if":
+		case "if", "unless":
 			ensure(TPOpen);
 			var cond = parseExpr();
 			ensure(TPClose);
@@ -668,26 +668,7 @@ class Parser {
 				push(tk);
 				if( semic ) push(TSemicolon);
 			}
-			mk(EIf(cond,e1,e2),p1,(e2 == null) ? tokenMax : pmax(e2));
-		case "unless":
-			ensure(TPOpen);
-			var cond = parseExpr();
-			ensure(TPClose);
-			var e1 = parseExpr();
-			var e2 = null;
-			var semic = false;
-			var tk = token();
-			if( tk == TSemicolon ) {
-				semic = true;
-				tk = token();
-			}
-			if( Type.enumEq(tk,TId("else")) )
-				e2 = parseExpr();
-			else {
-				push(tk);
-				if( semic ) push(TSemicolon);
-			}
-			mk(EIf(cond,e1,e2, true),p1,(e2 == null) ? tokenMax : pmax(e2));
+			mk(EIf(cond,e1,e2, id == "unless"),p1,(e2 == null) ? tokenMax : pmax(e2));
 		case "override":
 			nextIsOverride = true;
 			var nextToken = token();
