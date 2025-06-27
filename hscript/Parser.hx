@@ -393,6 +393,21 @@ class Parser {
 				e = mk(EIdent(id));
 			return parseExprNext(e);
 		case TConst(c):
+            			// if (maybe(TComma)) {
+            //     push(TConst(c));
+			// 	var args = parseExprList(TPOpen);
+			// 	args.unshift(mk(EConst(c)));
+			// 	var name = parseExpr();
+			// 	ensure(TPClose);
+			// 	return mk(ECall(name, args));
+			// }
+			if (maybe(TPOpen)) {
+                var args = parseExprList(TPClose);
+                var name = args.shift();
+                trace(name);
+                args.insert(0, mk(EConst(c)));
+				return mk(ECall(name, args));
+			} // lj if you read this kys
 			return parseExprNext(mk(EConst(c)));
 		case TPOpen:
 			tk = token();
@@ -736,7 +751,6 @@ class Parser {
 			else
 				push(tk);
 			nextType = null;
-			trace(nextIsStatic);
 			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic, className), p1, (e == null) ? tokenMax : pmax(e));
 		case "while":
 			var econd = parseExpr();
@@ -987,12 +1001,9 @@ class Parser {
 			ensureToken(TId("catch"));
 			ensure(TPOpen);
 			var vname = getIdent();
-			ensure(TDoubleDot);
 			var t = null;
-			if( allowTypes )
+			if( allowTypes && maybe(TDoubleDot))
 				t = parseType();
-			else
-				ensureToken(TId("Dynamic"));
 			ensure(TPClose);
 			var ec = parseExpr();
 			mk(ETry(e, vname, t, ec), p1, pmax(ec));
