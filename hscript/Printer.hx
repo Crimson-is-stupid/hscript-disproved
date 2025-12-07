@@ -289,6 +289,13 @@ class Printer {
 				add(" else ");
 				expr(e2);
 			}
+		case EShouldI(e1,e2):
+			add("whatdoyouthink");
+			expr(e1);
+			if( e2 != null ) {
+				add(" else ");
+				expr(e2);
+			}
 		case EWhile(cond,e):
 			add("while( ");
 			expr(cond);

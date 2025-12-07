@@ -296,6 +296,7 @@ class Parser {
 			case EClass(_,e,_,_): true;
 			case EVar(_, t, e, _,_): e != null ? isBlock(e) : t != null ? t.match(CTAnon(_)) : false;
 			case EIf(_,e1,e2): if( e2 != null ) isBlock(e2) else isBlock(e1);
+			case EShouldI(e1,e2): if( e2 != null ) isBlock(e2) else isBlock(e1);
 			case EBinop(_,_,e): isBlock(e);
 			case EUnop(_,prefix,e): !prefix && isBlock(e);
 			case EWhile(_,e): isBlock(e);
@@ -659,6 +660,26 @@ class Parser {
 				if( semic ) push(TSemicolon);
 			}
 			mk(EIf(cond,e1,e2),p1,(e2 == null) ? tokenMax : pmax(e2));
+        case "whatdoyouthink":
+            if (maybe(TPOpen)) {
+                parseExpr();
+                ensure(TPClose);
+            }
+			var e1 = parseExpr();
+			var e2 = null;
+			var semic = false;
+			var tk = token();
+			if( tk == TSemicolon ) {
+				semic = true;
+				tk = token();
+			}
+			if( Type.enumEq(tk,TId("else")) )
+				e2 = parseExpr();
+			else {
+				push(tk);
+				if( semic ) push(TSemicolon);
+			}
+            mk(EShouldI(e1, e2), p1, (e2 == null) ? tokenMax : pmax(e2));
 		case "override": // BIG TODO: OPTIMIZE ALL THIS BELOW UNTIL "inline"
 			nextIsOverride = true;
 			var nextToken = token();
@@ -960,7 +981,7 @@ class Parser {
 		//case "inline":
 		//	if( !maybe(TId("function")) ) unexpected(TId("inline"));
 		//	return parseStructure("function");
-		case "function":
+		case "function", "crab":
 			var tk = token();
 			var name = null;
 			switch( tk ) {
@@ -982,6 +1003,76 @@ class Parser {
 			ensure(TSemicolon);
 			push(TSemicolon);
 			mk(EPackage(pkg), p1);
+        case "from":
+			var oldReadPos = readPos;
+			var tk = token();
+            var importAll = false;
+			switch( tk ) {
+				case TPOpen:
+					var tok = token();
+					switch(tok) {
+						case TConst(c):
+							switch(c) {
+								case CString(s):
+                                    ensure(TComma);
+                                    tok = token();
+                                    switch (tok) {
+                                        case TOp("*"):
+                                            importAll = true;
+                                        case TId(str):
+                                            s += '.$str';
+                                        default:
+                                            unexpected(tok);
+                                    }
+									ensure(TPClose);
+									ensure(TSemicolon);
+									push(TSemicolon);
+									mk(EImport(s, null, null, importAll), p1);
+								default:
+									unexpected(tok);
+									null;
+							}
+						default:
+							unexpected(tok);
+							null;
+					}
+				case TId(id):
+					var path = [id];
+					var t = null;
+					while( true ) {
+						t = token();
+						if( t != TDot ) {
+							if(t.match(TId("import"))) {
+								t = token();
+								switch( t ) {
+									case TId(id):
+										path.push(id);
+                                    case TOp("*"):
+                                        importAll = true;
+									default:
+										unexpected(t);
+								}
+								break;
+							}
+                            unexpected(t);
+                            break;
+						}
+						t = token();
+						switch( t ) {
+							case TId(id):
+								path.push(id);
+							default:
+								unexpected(t);
+						}
+					}
+					ensure(TSemicolon);
+					push(TSemicolon);
+					var p = path.join(".");
+					mk(EImport(p, null, null, importAll),p1);
+				default:
+					unexpected(tk);
+					null;
+				}
 		case "import" | "using":
 			var isUsing = id == "using";
 			var oldReadPos = readPos;
@@ -994,7 +1085,8 @@ class Parser {
 						case TConst(c):
 							switch(c) {
 								case CString(s):
-									token();
+									// token(); who the fuck made it like this
+                                    ensure(TPClose);
 									ensure(TSemicolon);
 									push(TSemicolon);
 									mk(EImport(s), p1);
@@ -1024,7 +1116,6 @@ class Parser {
 								}
 								break;
 							}
-
 							push(t);
 							break;
 						}

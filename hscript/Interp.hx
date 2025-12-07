@@ -739,7 +739,7 @@ class Interp {
 					beforeAlias = null;
 					setAlias = null;
 				}
-			case EImport(clsName, aliasAs, isUsing):
+			case EImport(clsName, aliasAs, isUsing, importAll):
 				if(!importEnabled) return null;
 
 				var splitClassName = [for (e in clsName.split(".")) e.trim()];
@@ -748,6 +748,18 @@ class Interp {
 				var toSetName = aliasAs != null ? aliasAs : claVarName;
 				var oldClassName = realClassName;
 				var oldSplitName = splitClassName.copy();
+
+                if (allowStaticImports && importAll) {
+                    var funcName = oldSplitName[oldSplitName.length - 1];
+                    // var statField = Reflect.getProperty(Type.resolveClass(StringTools.trim(clPth.join("."))), funcName);
+                    var cl = Type.resolveClass(StringTools.trim(realClassName));
+                    var fields = Type.getClassFields(cl);
+                    for (field in fields) {
+                        var func = Reflect.getProperty(cl, field);
+                        variables.set(field, func);
+                    }
+                    return null;
+                }
 
 				if(variables.exists(toSetName)) { // class is already imported 
 					if(isUsing && !usingHandler.entryExists(toSetName))
@@ -790,17 +802,16 @@ class Interp {
 						//trace(realClassName, cl, en, splitClassName);
 					}
 				}
-
 				if(cl == null && en == null) {
 					if(allowStaticImports) { //allows for static imports like "haxe.io.Path.normalize"
-						var clPth = oldSplitName.copy();
-						var funcName = clPth.pop();
-						var statField = Reflect.getProperty(Type.resolveClass(StringTools.trim(clPth.join("."))), funcName);
+                        var clPth = oldSplitName.copy();
+                        var funcName = clPth.pop();
+                        var statField = Reflect.getProperty(Type.resolveClass(StringTools.trim(clPth.join("."))), funcName);
 
-						if(statField != null) {
-							variables.set((toSetName != null && toSetName.length > 0 ? toSetName : funcName), statField);
-							return null;
-						}
+                        if(statField != null) {
+                            variables.set((toSetName != null && toSetName.length > 0 ? toSetName : funcName), statField);
+                            return null;
+                        }
 					}
 
 					beforeAlias = claVarName;
@@ -1007,6 +1018,8 @@ class Interp {
 				}
 			case EIf(econd, e1, e2):
 				return if (expr(econd) == true) expr(e1) else if (e2 == null) null else expr(e2);
+            case EShouldI(e1, e2):
+                return if (Std.random(2) == 1) expr(e1) else if (e2 == null) null else expr(e2);
 			case EWhile(econd, e):
 				whileLoop(econd, e);
 				return null;

@@ -61,6 +61,7 @@ enum Expr {
 	EUnop( op : String, prefix : Bool, e : Expr );
 	ECall( e : Expr, params : Array<Expr> );
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
+	EShouldI( e1 : Expr, ?e2 : Expr );
 	EWhile( cond : Expr, e : Expr );
 	EFor( v : String, it : Expr, e : Expr, ?ithv: String);
 	EBreak;
@@ -80,7 +81,7 @@ enum Expr {
 	ECheckType( e : Expr, t : CType );
 
 	EPackage( ?n:String );
-	EImport( c : String, ?asname:String, ?isUsing:Bool );
+	EImport( c : String, ?asname:String, ?isUsing:Bool, ?importAll:Bool );
 	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String>, ?isFinal:Bool, ?isPrivate:Bool );
 	EEnum( en:EnumDecl, ?isAbstract:Bool );
 	ECast(e:Expr, ?t:CType);

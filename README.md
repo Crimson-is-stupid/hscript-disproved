@@ -1,3 +1,10 @@
+hscript-disproved
+=======
+- [Disproved Features](docs/FEATURESDISPROVED.md)
+Hscript Disproved is a dumb project where i modify stuff about hscript and add really dumb features
+
+one of the goals of this really dumb project is to ensure most if not all hscript-improved code works in hscript-disproved
+
 hscript-improved
 =======
 
