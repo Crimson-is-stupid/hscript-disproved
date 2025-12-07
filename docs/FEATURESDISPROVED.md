@@ -12,8 +12,6 @@
   // imports all static functions and variables from the `Std` Class
   from(Std, *);
   ```
-
-  - 
 - What Do you Think? (`whatdoyouthink`)
   ```haxe
   // the `whatdoyouthink` syntax can be used for letting the interpreter pick which block to run incase you're not sure!
