@@ -1221,9 +1221,9 @@ class Interp {
 				} else {
 					return arr[index];
 				}
-			case ENew(cl, params, _):
+			case ENew(cl, params, _, assign):
 				var a:Array<Dynamic> = makeArgs(params);
-				return cnew(cl, a);
+				return cnew(cl, a, assign);
 			case EThrow(e):
 				throw expr(e);
 			case ETry(e, n, _, ecatch):
@@ -1655,15 +1655,29 @@ class Interp {
 		return UnsafeReflect.callMethodSafe(o, f, args);
 	}
 
-	function cnew(cl:String, args:Array<Dynamic>):Dynamic {
+	function cnew(cl:String, args:Array<Dynamic>, assignments:Map<String, Expr>):Dynamic {
 		var c:Dynamic = resolve(cl);
 		if (c == null)
 			c = Type.resolveClass(cl);
+        var ret = null;
 		if (c is IHScriptCustomConstructor) {
 			var c:IHScriptCustomConstructor = cast c;
-			return c.hnew(args);
+			ret = c.hnew(args);
 		} else
-			return Type.createInstance(c, args);
+			ret = Type.createInstance(c, args);
+        var setter =  (variable, value) -> {
+            Reflect.setProperty(ret, variable, expr(value));
+        }
+        if (ret is IHScriptCustomBehaviour) {
+            var ret2:IHScriptCustomBehaviour = cast ret;
+            setter = (variable, value) -> {
+                ret2.hset(variable, expr(value));
+            }
+        }
+        for (variable=>value in assignments) {
+            setter(variable, value);
+        }
+        return ret;
 	}
 }
 

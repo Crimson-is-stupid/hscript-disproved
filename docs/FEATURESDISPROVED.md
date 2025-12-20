@@ -36,7 +36,36 @@
   }
   // now the code will try to check for the condition if the condition is false it continues and now it's 50/50 chance of whether it uses the 2nd or 3rd block!
   ```
+- C# Object Initializers
+  ```haxe
+  // C# Object Initializers can be used for setting variables without making assignment lines
+  // It can be used as such
+  class Person {
+    public var age:Int = 0;
+    public var gender:String = '';
 
+    public function new() {
+
+    }
+  }
+
+
+  var person = new Person() {
+    age=34;
+    gender='Male';
+  };
+
+  trace(person.age); // 34
+  trace(person.gender); // Male
+  // this is the equivalent of
+  var person = new Person();
+  person.age = 34;
+  person.gender = "Male";
+  
+  trace(person.age); // 34
+  trace(person.gender); // Male
+  ```
+  - Note: the `required` syntax has yet to be added
 ### TODO:
 - [ ] Define Macro
 - [ ] C Style Variables

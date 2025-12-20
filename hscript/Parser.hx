@@ -243,6 +243,14 @@ class Parser {
 		return false;
 	}
 
+    function not(tk) {
+		var t = token();
+		if( !Type.enumEq(t, tk) )
+			return true;
+		push(t);
+		return false;
+	}
+
 	function getIdent():String {
 		var tk = token();
 		switch( tk ) {
@@ -1333,7 +1341,25 @@ class Parser {
 				}
 			}
 			var args = parseExprList(TPClose);
-			mk(ENew(a.join("."), args, params), p1);
+            var vars:Map<String, Expr> = new Map<String, Expr>();
+            if (maybe(TBrOpen)) {
+                var tk;
+                while (true) {
+                    tk = token();
+                    if (tk == TBrClose)
+                        break;
+                    switch (tk) {
+                        case TId(s):
+                            ensureToken(TOp("="));
+                            var value = parseExpr();
+                            vars.set(s, value);
+                            ensure(TSemicolon);
+                        default:
+                            unexpected(tk);
+                    }
+                }
+            }
+			mk(ENew(a.join("."), args, params, vars), p1);
 		case "throw":
 			var e = parseExpr();
 			mk(EThrow(e),p1,pmax(e));
