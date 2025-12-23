@@ -218,6 +218,7 @@ class Interp {
 		binops.set("||", function(e1, e2) return me.expr(e1) == true || me.expr(e2) == true);
 		binops.set("&&", function(e1, e2) return me.expr(e1) == true && me.expr(e2) == true);
 		binops.set("is", checkIsType);
+		binops.set("with", withObjectClone);
 		binops.set("=", assign);
 		binops.set("??", function(e1, e2) {
 			var expr1:Dynamic = me.expr(e1);
@@ -262,6 +263,43 @@ class Interp {
 					false;
 		}
 	}
+
+    function withObjectClone(e1:Expr, e2:Expr) {
+        var obj = copyClass(expr(e1));
+        switch (e2.e) {
+            case EObject(fl):
+                for (field in fl) {
+                    for (field in fl) {
+                        set(obj, field.name, expr(field.e));
+                    }
+                }
+            default:
+                error(ECustom("Expression should be an Object"));
+        }
+        return obj;
+    }
+
+    /// https://community.haxe.org/t/clone-a-class-instance/3747/3
+    public function copyClass<T>(c:T):T {
+        switch (Type.typeof(c)) {
+            case TClass(clsType):
+                var cls:Class<T> = Type.getClass(c);
+                var inst:T = Type.createEmptyInstance(cls);
+                var fields = Type.getInstanceFields(cls);
+                for (field in fields) {
+                    var val:Dynamic = Reflect.field(c,field);
+                    if ( ! Reflect.isFunction(val) ) {
+                        Reflect.setField(inst,field,val);
+                    }
+                }
+                return inst;
+            case TObject:
+                return Reflect.copy(c);
+            default:
+                error(EUnexpected("Expression should be an Object or Class"));
+        }
+        return null;
+    }
 
 	public function varExists(name:String):Bool {
 		return allowStaticVariables && staticVariables.exists(name) || allowPublicVariables && publicVariables.exists(name) || variables.exists(name);
@@ -1655,7 +1693,7 @@ class Interp {
 		return UnsafeReflect.callMethodSafe(o, f, args);
 	}
 
-	function cnew(cl:String, args:Array<Dynamic>, assignments:Map<String, Expr>):Dynamic {
+	function cnew(cl:String, args:Array<Dynamic>, assignments:Null<Expr>):Dynamic {
 		var c:Dynamic = resolve(cl);
 		if (c == null)
 			c = Type.resolveClass(cl);
@@ -1665,18 +1703,21 @@ class Interp {
 			ret = c.hnew(args);
 		} else
 			ret = Type.createInstance(c, args);
-        var setter =  (variable, value) -> {
-            Reflect.setProperty(ret, variable, expr(value));
-        }
-        if (ret is IHScriptCustomBehaviour) {
-            var ret2:IHScriptCustomBehaviour = cast ret;
-            setter = (variable, value) -> {
-                ret2.hset(variable, expr(value));
+        if (assignments != null) {
+            switch (assignments.e) {
+                case EObject(fl):
+                    for (field in fl) {
+                        for (field in fl) {
+                            set(ret, field.name, expr(field.e));
+                        }
+                    }
+                default:
+                    error(ECustom("Expression should be an Object"));
             }
         }
-        for (variable=>value in assignments) {
-            setter(variable, value);
-        }
+        // for (variable=>value in assignments) {
+        //     set(ret, variable, expr(value));
+        // }
         return ret;
 	}
 }

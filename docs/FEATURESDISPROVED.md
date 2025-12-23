@@ -49,10 +49,10 @@
     }
   }
 
-
+  // after the new Class() statement put a block with the {variable:value} you want
   var person = new Person() {
-    age=34;
-    gender='Male';
+    age:34,
+    gender:'Male',
   };
 
   trace(person.age); // 34
@@ -66,6 +66,19 @@
   trace(person.gender); // Male
   ```
   - Note: the `required` syntax has yet to be added
+- With Operator (`with`)
+  the with operator clones an object except with values changed 
+  it can be used similarly to object initializers except unlike it instead of new Class() {var:value}
+  you do obj with {var:value}
+  look at the example below for more explanation
+  ```haxe
+  var obj = {a:3, b:2, c:"hey"};
+  trace(obj); // [b => 2, c => hey, a => 3]
+
+  // after the with expression you put a block with the parameters as such {variable:value}
+  var obj2 = obj with {a:5, c:"don't"};
+  trace(obj2); // [b => 2, a => 5, c => don't]
+  ```
 ### TODO:
 - [ ] Define Macro
 - [ ] C Style Variables

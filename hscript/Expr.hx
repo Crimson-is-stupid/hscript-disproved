@@ -70,7 +70,7 @@ enum Expr {
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EArrayDecl( e : Array<Expr>, ?wantedType: CType );
-	ENew( cl : String, params : Array<Expr>, ?paramType : Array<CType>, ?assignments : Map<String, Expr> );
+	ENew( cl : String, params : Array<Expr>, ?paramType : Array<CType>, ?assignments : Null<Expr> );
 	EThrow( e : Expr );
 	ETry( e : Expr, v : String, t : Null<CType>, ecatch : Expr );
 	EObject( fl : Array<ObjectField> );

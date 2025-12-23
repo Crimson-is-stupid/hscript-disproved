@@ -139,7 +139,7 @@ class Parser {
 			["||"],
 			["=","+=","-=","*=","/=","%=","<<=",">>=",">>>=","|=","&=","^=","=>","??" + "="],
 			["->", "??"],
-			["is"]
+			["is", "with"]
 		];
 		opPriority = new Map();
 		opRightAssoc = new Map();
@@ -1341,23 +1341,11 @@ class Parser {
 				}
 			}
 			var args = parseExprList(TPClose);
-            var vars:Map<String, Expr> = new Map<String, Expr>();
-            if (maybe(TBrOpen)) {
-                var tk;
-                while (true) {
-                    tk = token();
-                    if (tk == TBrClose)
-                        break;
-                    switch (tk) {
-                        case TId(s):
-                            ensureToken(TOp("="));
-                            var value = parseExpr();
-                            vars.set(s, value);
-                            ensure(TSemicolon);
-                        default:
-                            unexpected(tk);
-                    }
-                }
+            var vars = null;
+            var tk = token();
+            push(tk);
+            if (tk != TSemicolon) {
+                vars = parseExpr();
             }
 			mk(ENew(a.join("."), args, params, vars), p1);
 		case "throw":
