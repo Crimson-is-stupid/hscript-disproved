@@ -35,6 +35,7 @@ import hscript.utils.UnsafeReflect;
 import haxe.PosInfos;
 import hscript.Expr;
 import haxe.Constraints.IMap;
+import hscript.FunctionProperty.Functions;
 
 using StringTools;
 
@@ -134,12 +135,15 @@ class Interp {
 	public var locals:Map<String, DeclaredVar>;
 	var binops:Map<String, Expr->Expr->Dynamic>;
 
+	var metas:Map<String, Array<Expr>->Expr->Dynamic>;
+
 	var depth:Int = 0;
 	var inTry:Bool;
 	var declared:Array<RedeclaredVar>;
 	var returnValue:Dynamic;
 
 	var isBypassAccessor:Bool = false;
+	var isFunctionProp:Bool = false;
 	var setAlias:Null<String> = null; // Custom Class import alias
 	var beforeAlias:Null<String> = null;
 
@@ -165,6 +169,7 @@ class Interp {
 		declared = [];
 		resetVariables();
 		initOps();
+        initMetas();
 	}
 
 	private function resetVariables():Void {
@@ -238,6 +243,25 @@ class Interp {
 		assignOp(">>>=", function(v1, v2) return v1 >>> v2);
 		assignOp("??" + "=", function(v1, v2) return v1 == null ? v2 : v1);
 	}
+
+    function initMetas() {
+        metas = new Map();
+        metas.set(":bypassAccessor", function(b, e) {
+            var oldAccessor = isBypassAccessor;
+            isBypassAccessor = true;
+            var val = expr(e);
+
+            isBypassAccessor = oldAccessor;
+            return val;
+        });
+        metas.set(":functionProp", function(b, e) {
+            var oldProp = isFunctionProp;
+            isFunctionProp = true;
+            var val = expr(e);
+            isFunctionProp = oldProp;
+            return val;
+        });
+    }
 
 	function checkIsType(e1:Expr,e2:Expr): Bool {
 		var expr1:Dynamic = expr(e1);
@@ -314,6 +338,17 @@ class Interp {
 			variables.set(name, v);
 	}
 
+    
+	public function getVar(name:String):Dynamic {
+		if (allowStaticVariables && staticVariables.exists(name))
+			return staticVariables.get(name);
+		else if (allowPublicVariables && publicVariables.exists(name))
+			return publicVariables.get(name);
+		else
+			return variables.get(name);
+        return null;
+	}
+
 	function assign(e1:Expr, e2:Expr):Dynamic {
 		var v = expr(e2);
 		switch (Tools.expr(e1)) {
@@ -355,18 +390,23 @@ class Interp {
 							setVar(id, v);
 						}
 					} else {
+                        if (v is Functions && !isFunctionProp) {
+                            v = v.defaultFunction;
+                        }
 						var obj = resolve(id, false, false);
-						if (obj != null && obj is Property) {
-							var prop:Property = cast obj;
+						if (obj != null && obj is IProperty) {
+							var prop:IProperty = cast obj;
 							return prop.callSetter(id, v);
 						}
 						setVar(id, v);
 					}
-				} else if (l.r is Property) {
-					var prop:Property = cast l.r;
+				} else if (l.r is IProperty) {
+					var prop:IProperty = cast l.r;
 					return prop.callSetter(id, v);
 				} else {
-					l.r = v;
+                    if (v is Functions && !isFunctionProp)
+                        v = v.defaultFunction;
+                    l.r = v;
 					if (l.depth == 0) {
 						setVar(id, v);
 					}
@@ -439,8 +479,8 @@ class Interp {
 						}
 					} else {
 						var obj = resolve(id, true, false);
-						if (obj != null && obj is Property) {
-							var prop:Property = cast obj;
+						if (obj != null && obj is IProperty) {
+							var prop:IProperty = cast obj;
 							return prop.callSetter(id, v);
 						}
 						setVar(id, v);
@@ -448,8 +488,8 @@ class Interp {
 				}
 				else {
 					var l = locals.get(id);
-					if (l.r is Property) {
-						var prop:Property = cast l.r;
+					if (l.r is IProperty) {
+						var prop:IProperty = cast l.r;
 						return prop.callSetter(id, v);
 					}
 					l.r = v;
@@ -490,8 +530,8 @@ class Interp {
 				var l = locals.get(id);
 				if(l != null) {
 					var v:Dynamic = l.r;
-					var prop:Property = null;
-					if (v is Property) {
+					var prop:IProperty = null;
+					if (v is IProperty) {
 						prop = cast v;
 						v = prop.callGetter(id);
 					}
@@ -511,8 +551,8 @@ class Interp {
 					return v;
 				} else {
 					var v:Dynamic = resolve(id, true, false);
-					var prop:Property = null;
-					if (v is Property) {
+					var prop:IProperty = null;
+					if (v is IProperty) {
 						prop = cast v;
 						v = prop.callGetter(id);
 					}
@@ -673,8 +713,8 @@ class Interp {
 		if (locals.exists(id)) {
 			var l = locals.get(id);
 			if(l != null) {
-				if(l.r != null && l.r is Property && allowProperty)  
-					return cast(l.r, Property).callGetter(id);
+				if(l.r != null && l.r is IProperty && allowProperty)  
+					return cast(l.r, IProperty).callGetter(id);
 				else 
 					return l.r;
 			}
@@ -683,8 +723,8 @@ class Interp {
 		for(map in [variables, publicVariables, staticVariables]) {
 			if(map.exists(id)) {
 				var r:Null<Dynamic> = map.get(id);
-				if(r != null && r is Property && allowProperty) 
-					return cast(r, Property).callGetter(id);
+				if(r != null && r is IProperty && allowProperty) 
+					return cast(r, IProperty).callGetter(id);
 				else 
 					return r;
 			}
@@ -979,6 +1019,8 @@ class Interp {
 				}
 				declared.push({n: n, old: locals.get(n), depth: depth});
 				var r:Dynamic = (e == null) ? null : expr(e);
+                if (r is Functions && !isFunctionProp)
+                    r = r.defaultFunction;
 				var declProp:Property = null;
 				if (hasGetSet) {
 					declProp = {
@@ -1149,14 +1191,21 @@ class Interp {
 				var f = Reflect.makeVarArgs(f);
 				if (name != null) {
 					if (depth == 0) {
+                        var func = getVar(name);
+                        if (func != null && func is FunctionProperty) {
+                            func.r.set(params.length, f, false);
+                            return func;
+                        }
+                        var f2:FunctionProperty = {func:f, len:params.length, interp:me};
 						// global function
 						if(isStatic && allowStaticVariables) {
-							staticVariables.set(name, f);
+							staticVariables.set(name, f2);
 						} else if(isPublic && allowPublicVariables) {
-							publicVariables.set(name, f);
+							publicVariables.set(name, f2);
 						} else {
-							variables.set(name, f);
+							variables.set(name, f2);
 						}
+                        return f2;
 					} else {
 						// function-in-function is a local function
 						declared.push({n: name, old: locals.get(name), depth: depth});
@@ -1354,14 +1403,7 @@ class Interp {
 				restore(old);
 				return val;
 			case EMeta(a, b, e):
-				var oldAccessor = isBypassAccessor;
-				if(a == ":bypassAccessor") {
-					isBypassAccessor = true;
-				}
-				var val = expr(e);
-
-				isBypassAccessor = oldAccessor;
-				return val;
+                return metas.get(a)(b,e);
 			case ECheckType(e, _):
 				return expr(e);
 		}
@@ -1690,6 +1732,9 @@ class Interp {
 	}
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
+        if (f is Functions) {
+            return f.call(args.length, args);
+        }
 		return UnsafeReflect.callMethodSafe(o, f, args);
 	}
 

@@ -27,7 +27,7 @@ import hscript.Expr.FieldPropertyAccess;
  */
 @:access(hscript.Interp)
 @:structInit
-class Property {
+class Property implements IProperty {
 	private static inline var GET = 'get_';
 	private static inline var SET = 'set_';
 
