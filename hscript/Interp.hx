@@ -266,7 +266,7 @@ class Interp {
 
     function withObjectClone(e1:Expr, e2:Expr) {
         var obj = copyClass(expr(e1));
-        switch (e2.e) {
+        switch (Tools.expr(e2)) {
             case EObject(fl):
                 for (field in fl) {
                     for (field in fl) {
@@ -1704,7 +1704,7 @@ class Interp {
 		} else
 			ret = Type.createInstance(c, args);
         if (assignments != null) {
-            switch (assignments.e) {
+            switch (Tools.expr(assignments)) {
                 case EObject(fl):
                     for (field in fl) {
                         for (field in fl) {
