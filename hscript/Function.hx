@@ -1,26 +1,41 @@
 package hscript;
 
+import haxe.extern.EitherType;
 import haxe.xml.Access;
 import hscript.utils.UnsafeReflect;
 import hscript.Interp;
 
 @:access(hscript.Interp)
 @:structInit
-class FunctionProperty implements IProperty {
-	public var r:Functions;
+class Function implements IProperty {
+	public var r:FunctionGroup;
 	public var interp:Interp;
+
+    public var defaultFunction(get, never):Dynamic;
+
+    function get_defaultFunction() {
+        return r.defaultFunction;
+    }
 
 	public function new(func:Dynamic, len:Int, interp:Interp) {
 		this.r = {property:this, func:func, len:len};
 		this.interp = interp;
 	}
 
+    public function call(args) {
+        return r.call(args);
+    }
+
+    public function callUnsafe(args) {
+        return r.callUnsafe(args);
+    }
+
 	public function callGetter(name:String) {
 		return r;
 	}
 
     public function callFunction(args) {
-        return r.call(args.length, args);
+        return r.call(args);
     }
 
 	public function callSetter(name:String, val:Dynamic) {
@@ -30,19 +45,23 @@ class FunctionProperty implements IProperty {
 }
 
 @:structInit
-class Functions {
-    var property:FunctionProperty;
+class FunctionGroup {
+    var property:Function;
     var functions:Map<Int, Dynamic> = new Map<Int, Dynamic>();
     public var defaultFunction:Dynamic;
 
-    public function new(property:FunctionProperty, func:Dynamic, len:Int) {
+    public function new(property:Function, func:Dynamic, len:Int) {
         this.property = property;
         defaultFunction = func;
         set(len, func);
     }
 
-    public function call(len, args) {
-		return UnsafeReflect.callMethodSafe(null, get(len), args);
+    public function call(args) {
+		return UnsafeReflect.callMethodSafe(null, get(args.length), args);
+    }
+
+    public function callUnsafe(args) {
+		return UnsafeReflect.callMethodUnsafe(null, get(args.length), args);
     }
 
     public function set(len, func:Dynamic, overrideFunction:Bool = true) {
@@ -53,7 +72,7 @@ class Functions {
     }
 
     public function get(len:Int) {
-        return functions.exists(len) ? functions.get(len) : defaultFunction;
+        return exists(len) ? functions.get(len) : defaultFunction;
     }
 
     public function exists(len:Int) {

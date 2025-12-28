@@ -35,7 +35,7 @@ import hscript.utils.UnsafeReflect;
 import haxe.PosInfos;
 import hscript.Expr;
 import haxe.Constraints.IMap;
-import hscript.FunctionProperty.Functions;
+import hscript.Function.FunctionGroup;
 
 using StringTools;
 
@@ -390,7 +390,7 @@ class Interp {
 							setVar(id, v);
 						}
 					} else {
-                        if (v is Functions && !isFunctionProp) {
+                        if (v is FunctionGroup && !isFunctionProp) {
                             v = v.defaultFunction;
                         }
 						var obj = resolve(id, false, false);
@@ -404,7 +404,7 @@ class Interp {
 					var prop:IProperty = cast l.r;
 					return prop.callSetter(id, v);
 				} else {
-                    if (v is Functions && !isFunctionProp)
+                    if (v is FunctionGroup && !isFunctionProp)
                         v = v.defaultFunction;
                     l.r = v;
 					if (l.depth == 0) {
@@ -1019,7 +1019,7 @@ class Interp {
 				}
 				declared.push({n: n, old: locals.get(n), depth: depth});
 				var r:Dynamic = (e == null) ? null : expr(e);
-                if (r is Functions && !isFunctionProp)
+                if (r is FunctionGroup && !isFunctionProp)
                     r = r.defaultFunction;
 				var declProp:Property = null;
 				if (hasGetSet) {
@@ -1192,11 +1192,11 @@ class Interp {
 				if (name != null) {
 					if (depth == 0) {
                         var func = getVar(name);
-                        if (func != null && func is FunctionProperty) {
+                        if (func != null && func is Function) {
                             func.r.set(params.length, f, false);
                             return func;
                         }
-                        var f2:FunctionProperty = {func:f, len:params.length, interp:me};
+                        var f2:Function = {func:f, len:params.length, interp:me};
 						// global function
 						if(isStatic && allowStaticVariables) {
 							staticVariables.set(name, f2);
@@ -1732,7 +1732,7 @@ class Interp {
 	}
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
-        if (f is Functions) {
+        if (f is FunctionGroup) {
             return f.call(args.length, args);
         }
 		return UnsafeReflect.callMethodSafe(o, f, args);
