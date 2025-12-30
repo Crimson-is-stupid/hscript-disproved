@@ -11,7 +11,7 @@
     // imports all static functions and variables from the `Std` Class
     from(Std, *);
     ```
-    - What Do you Think? (`whatdoyouthink`)
+- What Do you Think? (`whatdoyouthink`)
     ```haxe
     // the `whatdoyouthink` syntax can be used for letting the interpreter pick which block to run incase you're not sure!
     // the following code has a 50% chance between either printing `example` or `example2`
@@ -78,9 +78,24 @@
     var obj2 = obj with {a:5, c:"don't"};
     trace(obj2); // [b => 2, a => 5, c => don't]
     ```
-- [EXPERIMENTAL] Function Overloads
-    functions overloads can be used to allow you to have multiple functions with the same name as long as they have different argument amounts (support for type based overloads is planned but not top priority)
+
+# EXPERIMENTAL FEATURES
+
+- Experimental Meta (`@:experimental(a)`)
+    Experimental features can be enabled simply by writing `@:experimental(a, ?b)` replace `a` with the feature you want to enable `b` is an optional argument to manually enable/disable experiments by default b is true so you can just do `@:experimental(a)`
+    For example incase you want to enable function overloads you would have to do `@:experimental(functionOverloads)`
+    preferably put the experimental meta at the top of your script like this
     ```haxe
+    @:experimental(feature)
+    // ... rest of code
+    ```
+- Function Overloads
+    `@:experimental(functionOverloads)`
+    functions overloads can be used to allow you to have multiple functions with the same name as long as they have different argument amounts (support for type based overloads is planned but not top priority)
+    function overloads currently do not work with custom classes support is planned
+    ```haxe
+    @:experimental(functionOverloads) // preferably put this at the top of the code to enable function overloads
+
     // since this is the first function with the name `test` it is the default function for `test`
     function test() {
         return 5;

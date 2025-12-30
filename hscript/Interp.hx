@@ -147,6 +147,8 @@ class Interp {
 	var setAlias:Null<String> = null; // Custom Class import alias
 	var beforeAlias:Null<String> = null;
 
+    var experimentalFeatures:Map<String, Bool> = ["functionOverloads" => false];
+
 	public var importEnabled:Bool = true;
 	public var allowStaticImports:Bool = true;
 
@@ -259,6 +261,19 @@ class Interp {
             isFunctionProp = true;
             var val = expr(e);
             isFunctionProp = oldProp;
+            return val;
+        });
+        metas.set(":experimental", function(b, e) {
+            switch (Tools.expr(b[0])) {
+                case EIdent(v):
+                    var check = true;
+                    if (b[1] != null)
+                        check = expr(b[1]) == true;
+                    experimentalFeatures.set(v, check);
+                default:
+                    error(ECustom("Unexpected Expression. The Expression should be An identifier."));
+            }
+            var val = expr(e);
             return val;
         });
     }
@@ -1196,15 +1211,19 @@ class Interp {
                             func.r.set(params.length, f, false);
                             return func;
                         }
-                        var f2:Function = {func:f, len:params.length, interp:me};
+                        var f2:Dynamic = f;
+                        if (experimentalFeatures.get("functionOverloads")) {
+                            f2 = new Function(f2, params.length, me);
+                        }
+
 						// global function
-						if(isStatic && allowStaticVariables) {
-							staticVariables.set(name, f2);
-						} else if(isPublic && allowPublicVariables) {
-							publicVariables.set(name, f2);
-						} else {
-							variables.set(name, f2);
-						}
+                        if(isStatic && allowStaticVariables) {
+                            staticVariables.set(name, f2);
+                        } else if(isPublic && allowPublicVariables) {
+                            publicVariables.set(name, f2);
+                        } else {
+                            variables.set(name, f2);
+                        }
                         return f2;
 					} else {
 						// function-in-function is a local function
@@ -1733,7 +1752,7 @@ class Interp {
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
         if (f is FunctionGroup) {
-            return f.call(args.length, args);
+            return f.call(args);
         }
 		return UnsafeReflect.callMethodSafe(o, f, args);
 	}

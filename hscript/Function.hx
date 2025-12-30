@@ -6,7 +6,6 @@ import hscript.utils.UnsafeReflect;
 import hscript.Interp;
 
 @:access(hscript.Interp)
-@:structInit
 class Function implements IProperty {
 	public var r:FunctionGroup;
 	public var interp:Interp;
