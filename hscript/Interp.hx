@@ -147,7 +147,7 @@ class Interp {
 	var setAlias:Null<String> = null; // Custom Class import alias
 	var beforeAlias:Null<String> = null;
 
-    var experimentalFeatures:Map<String, Bool> = ["functionOverloads" => false];
+    public var experimentalFeatures:Map<String, Bool> = ["functionOverloads" => false];
 
 	public var importEnabled:Bool = true;
 	public var allowStaticImports:Bool = true;
@@ -1772,7 +1772,6 @@ class Interp {
         if (c is CustomClassHandler) {
 			var c:CustomClassHandler = cast c;
             requiredFields = c.__requiredFields.copy();
-            trace(requiredFields);
         }
         if (assignments != null) {
             switch (Tools.expr(assignments)) {
