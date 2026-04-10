@@ -41,6 +41,7 @@ class CustomClass implements IHScriptCustomClassBehaviour {
 		__interp = new Interp();
 		__interp.errorHandler = __class.__interp.errorHandler;
 		__interp.importFailedCallback = __class.__interp.importFailedCallback;
+        __interp.experimentalFeatures = __class.ogInterp.experimentalFeatures;
 
 		// __interp.variables = __class.staticInterp.variables;
 		@:privateAccess __interp.usingHandler.usingEntries = __class.ogInterp.usingHandler.usingEntries;
@@ -150,8 +151,10 @@ class CustomClass implements IHScriptCustomClassBehaviour {
 			else 
 				__interp.variables.get(name);
 		};
-
-		if (fn != null && Reflect.isFunction(fn))
+        if (fn != null && fn is hscript.Function)
+            // the cast is not neccessary but you know just to be safe
+            return (cast (fn, hscript.Function)).callUnsafe((args == null) ? [] : args);
+		else if (fn != null && Reflect.isFunction(fn))
 			return UnsafeReflect.callMethodUnsafe(null, fn, (args == null) ? [] : args);
 		else
 			__interp.error(ECustom('$name doesn\'t exists or is not a function'));
@@ -179,7 +182,7 @@ class CustomClass implements IHScriptCustomClassBehaviour {
 	}
 
 	function setField(name:String, val:Dynamic):Dynamic {
-		var f = getField(name, false);
+        var f = getField(name, false);
 		if (f != null && f is Property) {
 			var prop:Property = cast f;
 			prop.__allowSetGet = this.__allowSetGet;

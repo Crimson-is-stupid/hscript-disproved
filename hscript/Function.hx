@@ -33,10 +33,6 @@ class Function implements IProperty {
 		return r;
 	}
 
-    public function callFunction(args) {
-        return r.call(args);
-    }
-
 	public function callSetter(name:String, val:Dynamic) {
         interp.error(ECustom("functions cannot be assigned use arrow/local functions for changing the function"));
 		return r;
@@ -70,7 +66,7 @@ class FunctionGroup {
             property.interp.error(ECustom('error the function with $len arg(s) already exists'));
     }
 
-    public function get(len:Int) {
+    public function get(len:Int):Dynamic {
         return exists(len) ? functions.get(len) : defaultFunction;
     }
 

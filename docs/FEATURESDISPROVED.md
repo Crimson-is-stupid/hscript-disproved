@@ -114,8 +114,7 @@
     ```
 - Function Overloads
     `@:experimental(functionOverloads)`
-    functions overloads can be used to allow you to have multiple functions with the same name as long as they have different argument amounts (support for type based overloads is planned but not top priority)
-    function overloads currently do not work with custom classes support is planned
+    functions overloads can be used to allow you to have multiple functions with the same name as long as they have different argument amounts (support for type based overloads is planned but very low priority)
     ```haxe
     @:experimental(functionOverloads) // preferably put this at the top of the code to enable function overloads
 

@@ -1751,7 +1751,11 @@ class Interp {
 	}
 
 	function call(o:Dynamic, f:Dynamic, args:Array<Dynamic>):Dynamic {
-        if (f is FunctionGroup) {
+        // custom classes try to use the `Function` class directly instead of `FunctionGroup`
+        // so implement it in if the if statement just for custom classes
+        // maybe i should just use an interface with the shared fields
+        // so i can just do 1 check?
+        if (f is FunctionGroup || f is hscript.Function) {
             return f.call(args);
         }
 		return UnsafeReflect.callMethodSafe(o, f, args);
