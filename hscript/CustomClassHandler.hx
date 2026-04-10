@@ -16,6 +16,7 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 
 	private var __interp:Interp;
 	private var __staticFields:Array<String> = [];
+	private var __requiredFields:Array<String> = [];
 
 	public var __allowSetGet:Bool = true;
 
@@ -63,19 +64,24 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 		for(e in fields.copy()) {
 			var validField:Bool = false;
 			var staticField:Bool = false;
+			var requiredField:Bool = false;
 			var fieldName:String = "";
 			switch (Tools.expr(e)) {
-				case EVar(n, _, _, _, isStatic):
+				case EVar(n, _, _, _, isStatic, _, _, _, _, _, _, isRequired):
 					validField = true;
 					staticField = isStatic;
+                    requiredField = isRequired;
 					fieldName = n;
-				case EFunction(_, _, n, _, _, isStatic, _, _, _, _):
+				case EFunction(_, _, n, _, _, isStatic, _, _, _, _, isRequired):
 					validField = true;
 					staticField = isStatic;
+                    requiredField = isRequired;
 					fieldName = n;
 				default:
 			}
 
+            if (requiredField && validField)
+                __requiredFields.push(fieldName);
 			if(staticField && validField) {
 				__interp.exprReturn(e);
 				__staticFields.push(fieldName);

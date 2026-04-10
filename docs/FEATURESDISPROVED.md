@@ -40,18 +40,16 @@
     // C# Object Initializers can be used for setting variables without making assignment lines
     // It can be used as such
     class Person {
-    public var age:Int = 0;
-    public var gender:String = '';
+        public var age:Int = 0;
+        public var gender:String = '';
 
-    public function new() {
-
-    }
+        public function new() {}
     }
 
     // after the new Class() statement put a block with the {variable:value} you want
     var person = new Person() {
-    age:34,
-    gender:'Male',
+        age:34,
+        gender:'Male',
     };
 
     trace(person.age); // 34
@@ -64,7 +62,32 @@
     trace(person.age); // 34
     trace(person.gender); // Male
     ```
-    - Note: the `required` syntax has yet to be added
+    'required' field is also supported allowing you to make it so an object needs to be created in the object initializer
+    it can be used like this
+    ```haxe
+    class Person {
+        // put `required` when creating the variable to make it a required variable for object initialization
+        public required var age:Int = 0;
+        public var gender:String = '';
+        // due to the way hscript is designed functions and variables are the same thing
+        // for consistencies sake i just decided to make it also work on functions so this is also valid code
+        // public required function myFunction() {}
+
+        public function new() {}
+    }
+
+    // valid code
+    var person = new Person() {
+        age:34,
+        gender:'Male',
+    };
+    // invalid code
+    // will error out with the message
+    //  Missing required Fields: 'age'
+    var person = new Person() {
+        gender:'Male',
+    };
+    ```
 - With Operator (`with`)
     the with operator clones an object except with values changed 
     it can be used similarly to object initializers except unlike it instead of new Class() {var:value}

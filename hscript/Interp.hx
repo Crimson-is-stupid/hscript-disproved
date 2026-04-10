@@ -1757,6 +1757,7 @@ class Interp {
 		return UnsafeReflect.callMethodSafe(o, f, args);
 	}
 
+	@:access(hscript.CustomClassHandler)
 	function cnew(cl:String, args:Array<Dynamic>, assignments:Null<Expr>):Dynamic {
 		var c:Dynamic = resolve(cl);
 		if (c == null)
@@ -1767,17 +1768,28 @@ class Interp {
 			ret = c.hnew(args);
 		} else
 			ret = Type.createInstance(c, args);
+        var requiredFields:Array<String> = [];
+        if (c is CustomClassHandler) {
+			var c:CustomClassHandler = cast c;
+            requiredFields = c.__requiredFields.copy();
+            trace(requiredFields);
+        }
         if (assignments != null) {
             switch (Tools.expr(assignments)) {
                 case EObject(fl):
                     for (field in fl) {
                         for (field in fl) {
                             set(ret, field.name, expr(field.e));
+                            requiredFields.remove(field.name);
                         }
                     }
                 default:
                     error(ECustom("Expression should be an Object"));
             }
+        }
+
+        if (requiredFields.length > 0) {
+            error(ECustom('Missing required Fields: \'${requiredFields.join("', '")}\''));
         }
         // for (variable=>value in assignments) {
         //     set(ret, variable, expr(value));

@@ -643,6 +643,7 @@ class Parser {
 	var nextIsPrivate:Bool = false;
 	var nextIsFinal:Bool = false;
 	var nextIsInline:Bool = false;
+	var nextIsRequired:Bool = false;
 	var nextType:CType = null;
 	function parseStructure(id:String, ?oldPos:Int):Expr {
 		#if hscriptPos
@@ -720,6 +721,10 @@ class Parser {
 					var str = parseStructure("inline"); // override inline
 					nextIsOverride = false;
 					str;
+                case TId("required"): // override required
+					var str = parseStructure("required"); // override required
+					nextIsStatic = false;
+					str;
 				default:
 					unexpected(nextToken);
 					nextIsOverride = false;
@@ -756,6 +761,10 @@ class Parser {
 				case TId("inline"):
 					var str = parseStructure("inline"); // static inline
 					nextIsStatic = false;
+					str;
+                case TId("required"): // static required
+					var str = parseStructure("required"); // static required
+				    nextIsStatic	 = false;
 					str;
 				default:
 					unexpected(nextToken);
@@ -798,6 +807,10 @@ class Parser {
 					var str = parseStructure("inline"); // public inline
 					nextIsPublic = false;
 					str;
+                case TId("required"): // public required
+					var str = parseStructure("required"); // public required
+					nextIsPublic = false;
+					str;
 				default:
 					unexpected(nextToken);
 					nextIsPublic = false;
@@ -833,6 +846,10 @@ class Parser {
 					str;
 				case TId("inline"):
 					var str = parseStructure("inline"); // private inline
+					nextIsPrivate = false;
+					str;
+                case TId("required"): // private required
+					var str = parseStructure("required"); // private required
 					nextIsPrivate = false;
 					str;
 				default:
@@ -872,9 +889,53 @@ class Parser {
 					var str = parseStructure("private"); // inline private
 					nextIsInline = false;
 					str;
+                case TId("required"): // inline required
+					var str = parseStructure("required"); // inline required
+					nextIsInline = false;
+					str;
 				default:
 					unexpected(nextToken);
 					nextIsInline = false;
+					null;
+			}
+        case "required":
+			nextIsRequired = true;
+			var nextToken = token();
+			switch(nextToken) {
+				case TId("public"):
+					var str = parseStructure("public"); // required public
+					nextIsRequired = false;
+					str;
+				case TId("override"):
+					var str = parseStructure("override"); // required override
+					nextIsRequired = false;
+					str;
+                case TId("function"):
+                    // it's not proper to add functions for "required" field support
+                    // but functions and variables are completely indistinguisable in hscript
+                    // so might as well keep it
+					var str = parseStructure("function"); //
+					nextIsRequired = false;
+					str;
+				case TId("var"):
+					var str = parseStructure("var"); // required var
+					nextIsRequired = false;
+					str;
+				case TId("final"):
+					var str = parseStructure("final"); // required final
+					nextIsRequired = false;
+					str;
+				case TId("private"):
+					var str = parseStructure("private"); // required private
+					nextIsRequired = false;
+					str;
+				case TId("inline"):
+					var str = parseStructure("inline"); // required inline
+					nextIsRequired = false;
+					str;
+				default:
+					unexpected(nextToken);
+					nextIsRequired = false;
 					null;
 			}
 		case "var" | "final":
@@ -951,7 +1012,7 @@ class Parser {
 
 			nextType = null;
 			if(isVar) isVar = false;
-			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic, nextIsPrivate, id == "final", nextIsInline, get, set, oldIsVar), p1, (e == null) ? tokenMax : pmax(e));
+			mk(EVar(ident, t, e, nextIsPublic, nextIsStatic, nextIsPrivate, id == "final", nextIsInline, get, set, oldIsVar, nextIsRequired), p1, (e == null) ? tokenMax : pmax(e));
 		case "while":
 			var econd = parseExpr();
 			var e = parseExpr();
@@ -1000,7 +1061,7 @@ class Parser {
 
 			var tk = token();
 			push(tk);
-			mk(EFunction(inf.args, inf.body, name, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride, nextIsPrivate, nextIsFinal, nextIsInline),p1,pmax(inf.body));
+			mk(EFunction(inf.args, inf.body, name, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride, nextIsPrivate, nextIsFinal, nextIsInline, nextIsRequired),p1,pmax(inf.body));
 		case "package":
 			var tk = token();
 			push(tk);
@@ -1221,6 +1282,7 @@ class Parser {
 					break;
 				push(tk);
 			}
+
 
 			var tk = token();
 			push(tk);
