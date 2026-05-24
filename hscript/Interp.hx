@@ -77,6 +77,8 @@ class Interp {
 
 	private var _scriptObjectType(default, null):ScriptObjectType = SNull;
 
+    private var printer:Printer = new Printer();
+
 	var __instanceFields:Array<String> = [];
 
 	public var scriptObject(default, set):Dynamic;
@@ -1154,7 +1156,7 @@ class Interp {
 						minParams++;
 				var f = function(args:Array<Dynamic>) {
 					if (me.locals == null || me.variables == null) return null;
-
+                    var realLength = args.length;
 					if (((args == null) ? 0 : args.length) != params.length) {
 						if (args.length < minParams) {
 							var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
@@ -1181,7 +1183,7 @@ class Interp {
 					me.depth++;
 					me.locals = me.duplicate(capturedLocals);
 					for (i in 0...params.length)
-						me.locals.set(params[i].name, {r: args[i], depth: depth});
+						me.locals.set(params[i].name, {r: (i <= realLength-1) ? args[i] : expr(params[i].value), depth: depth});
 					var r = null;
 					var oldDecl = declared.length;
 					if (inTry)
@@ -1327,9 +1329,9 @@ class Interp {
 				} else {
 					return arr[index];
 				}
-			case ENew(cl, params, _, assign):
+			case ENew(cl, params, _, assign, t):
 				var a:Array<Dynamic> = makeArgs(params);
-				return cnew(cl, a, assign);
+				return cnew(cl, a, assign, t);
 			case EThrow(e):
 				throw expr(e);
 			case ETry(e, n, _, ecatch):
@@ -1762,7 +1764,11 @@ class Interp {
 	}
 
 	@:access(hscript.CustomClassHandler)
-	function cnew(cl:String, args:Array<Dynamic>, assignments:Null<Expr>):Dynamic {
+	function cnew(cl:String, args:Array<Dynamic>, assignments:Null<Expr>, ?type:CType):Dynamic {
+        if (cl == null && type == null)
+            error(ECustom("Can't use `new()` without having a type"));
+        if (cl == null && type != null)
+            cl = printer.typeToString(type); // this is actually so horrendous i actually fucking hate it
 		var c:Dynamic = resolve(cl);
 		if (c == null)
 			c = Type.resolveClass(cl);

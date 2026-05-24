@@ -1353,55 +1353,61 @@ class Parser {
 			var e = if( tk == TSemicolon ) null else parseExpr();
 			mk(EReturn(e),p1,if( e == null ) tokenMax else pmax(e));
 		case "new":
+            var inferType = false;
+            if (maybe(TPOpen)) {
+                inferType = true;
+            }
 			var a = [];
 			var params:Null<Array<CType>> = null;
-			a.push(getIdent());
-			while( true ) {
-				var tk = token();
-				switch( tk ) {
-					case TDot:
-						a.push(getIdent());
-					case TOp(op) :
-						if( op == '<' ) {
-							params = [];
-							while(true) {
-								switch(token()) {
-									case TConst(c):
-										params.push(CTExpr(mk(EConst(c))));
-									case tk:
-										push(tk);
-										params.push(parseType());
-								}
-								tk = token();
-								switch(tk) {
-									case TComma: continue;
-									case TOp(op):
-										if( op == ">") break;
-										if( op.charCodeAt(0) == ">".code ) {
-										#if hscriptPos
-										tokens.add({ t : TOp(op.substr(1)), min : tokenMax - op.length - 1, max : tokenMax });
-										#else
-										tokens.add(TOp(op.substr(1)));
-										#end
-										break;
-									}
-									default:
-								}
-								unexpected(tk);
-								break;
-							}
-						}
-						else {
-							unexpected(tk);
-							break;
-						}
-					case TPOpen:
-						break;
-					default:
-						unexpected(tk);
-						break;
-				}
-			}
+            if (!inferType) {
+                a.push(getIdent());
+                while( true ) {
+                    var tk = token();
+                    switch( tk ) {
+                        case TDot:
+                            a.push(getIdent());
+                        case TOp(op) :
+                            if( op == '<' ) {
+                                params = [];
+                                while(true) {
+                                    switch(token()) {
+                                        case TConst(c):
+                                            params.push(CTExpr(mk(EConst(c))));
+                                        case tk:
+                                            push(tk);
+                                            params.push(parseType());
+                                    }
+                                    tk = token();
+                                    switch(tk) {
+                                        case TComma: continue;
+                                        case TOp(op):
+                                            if( op == ">") break;
+                                            if( op.charCodeAt(0) == ">".code ) {
+                                            #if hscriptPos
+                                            tokens.add({ t : TOp(op.substr(1)), min : tokenMax - op.length - 1, max : tokenMax });
+                                            #else
+                                            tokens.add(TOp(op.substr(1)));
+                                            #end
+                                            break;
+                                        }
+                                        default:
+                                    }
+                                    unexpected(tk);
+                                    break;
+                                }
+                            }
+                            else {
+                                unexpected(tk);
+                                break;
+                            }
+                        case TPOpen:
+                            break;
+                        default:
+                            unexpected(tk);
+                            break;
+                    }
+                }
+            }
 			var args = parseExprList(TPClose);
             var vars = null;
             var tk = token();
@@ -1409,7 +1415,7 @@ class Parser {
             if (tk != TSemicolon) {
                 vars = parseExpr();
             }
-			mk(ENew(a.join("."), args, params, vars), p1);
+			mk(ENew(inferType ? null : a.join("."), args, params, vars, nextType), p1);
 		case "throw":
 			var e = parseExpr();
 			mk(EThrow(e),p1,pmax(e));

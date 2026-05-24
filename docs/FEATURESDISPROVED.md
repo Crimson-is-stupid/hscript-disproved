@@ -89,6 +89,7 @@
     };
     ```
 - With Operator (`with`)
+
     the with operator clones an object except with values changed 
     it can be used similarly to object initializers except unlike it instead of new Class() {var:value}
     you do obj with {var:value}
@@ -101,10 +102,46 @@
     var obj2 = obj with {a:5, c:"don't"};
     trace(obj2); // [b => 2, a => 5, c => don't]
     ```
+- Type Inference in `new` Expressions
+
+    The ability to just call `new(params)` directly is now possible using a shitty system
+    ```haxe
+    // what IS valid
+    var example:Printer = new(); // equivalent to doing var example:Printer = new Printer();
+    // what is NOT valid
+    var example = new(); // Can't use `new()` without having a type
+    ```
+- Function Default Argument Value Fix
+
+    For whatever reason in hscript, the default value of an argument  is never used, an example of this weird behaviour is shown below, and the "old" solution.
+    ```haxe
+    function test(x = 3) {
+        trace(x);
+    }
+    test(33); // Prints 33 as expected.
+    test(); // Prints null.
+    // The solution most people would use is as shown below.
+    function test(x = 3) {
+        x ??= 3;
+        trace(x);
+    }
+    test(33); // Prints 33.
+    test() // Prints 3.
+    ```
+    This behaviour has now been fixed, and now you can do code like this without unexpected bugs.
+    ```haxe
+    function test(x = 3) {
+        // No stupid x ??= 3!!!
+        trace(x);
+    }
+    test(33); // Prints 33.
+    test(); // Prints 3.
+    ```
 
 # EXPERIMENTAL FEATURES
 
 - Experimental Meta (`@:experimental(a)`)
+
     Experimental features can be enabled simply by writing `@:experimental(a, ?b)` replace `a` with the feature you want to enable `b` is an optional argument to manually enable/disable experiments by default b is true so you can just do `@:experimental(a)`
     For example incase you want to enable function overloads you would have to do `@:experimental(functionOverloads)`
     preferably put the experimental meta at the top of your script like this
@@ -113,6 +150,7 @@
     // ... rest of code
     ```
 - Function Overloads
+
     `@:experimental(functionOverloads)`
     functions overloads can be used to allow you to have multiple functions with the same name as long as they have different argument amounts (support for type based overloads is planned but very low priority)
     ```haxe
