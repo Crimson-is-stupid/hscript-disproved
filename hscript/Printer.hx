@@ -197,6 +197,10 @@ class Printer {
 			}
 		case EIdent(v):
 			add(v);
+        case ENameof(p):
+            add("nameof(");
+            add(p.join("."));
+            add(")");
 		case EVar(n, t, e, p, s, pr, isFinal, isInline, get, set, _): 
 			if(p) add("public ");
 			else if(pr) add("private ");

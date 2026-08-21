@@ -1028,6 +1028,8 @@ class Interp {
 				}
 			case EIdent(id):
 				return resolve(id);
+            case ENameof(p):
+                return p[p.length - 1];
 			case EVar(n, _, e, isPublic, isStatic, _, isFinal, _, getter, setter, isVar):
 				var hasGetSet:Bool = (getter != null || setter != null);
 				if(depth > 0 && hasGetSet) {
@@ -1373,6 +1375,7 @@ class Interp {
 						// https://github.com/FunkinCrew/hscript/blob/funkin-dev/hscript/Interp.hx#L611
 						switch (Tools.expr(v)) {
 							case ECall(e, params):
+                                trace(Tools.expr(e));
 								switch (Tools.expr(e)) {
 									case EField(_, f):
 										var isScripted:Bool = val is HEnumValue;
@@ -1386,7 +1389,6 @@ class Interp {
 											valStr = cast val;
 											valStr = valStr.substring(0, valStr.indexOf("("));
 										}
-
 										if(valStr == f) {
 											var valParams = isScripted ? valEnum.getConstructorArgs() : Type.enumParameters(val);
 											for (i => p in params) {

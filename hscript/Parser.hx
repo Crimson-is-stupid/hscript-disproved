@@ -938,6 +938,23 @@ class Parser {
 					nextIsRequired = false;
 					null;
 			}
+        case "nameof":
+            ensure(TPOpen);
+            var path = [getIdent()];
+            while (true) {
+                var t = token();
+                switch( t ) {
+                    case TId(id):
+                        path.push(id);
+                    case TDot:
+                        continue;
+                    case TPClose:
+                        break;
+                    default:
+                        unexpected(t);
+                }
+            }
+            mk(ENameof(path),p1);
 		case "var" | "final":
 			if(id == "final") {
 				var nextToken = token();

@@ -53,6 +53,7 @@ enum Expr {
 #end
 	EConst( c : Const );
 	EIdent( v : String );
+    ENameof( p : Array<String> );
 	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool, ?isPrivate : Bool, ?isFinal : Bool, ?isInline : Bool, ?get : FieldPropertyAccess, ?set : FieldPropertyAccess, ?isVar:Bool, ?isRequired : Bool );
 	EParent( e : Expr );
 	EBlock( e : Array<Expr> );
